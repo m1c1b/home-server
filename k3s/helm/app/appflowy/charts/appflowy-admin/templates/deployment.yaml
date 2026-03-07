@@ -36,6 +36,10 @@ spec:
           env:
             - name: ADMIN_FRONTEND_GOTRUE_URL
               value: {{ .Values.global.gotrue.baseUrl }}
+            - name: APPFLOWY_GOTRUE_BASE_URL
+              value: {{ .Values.global.gotrue.baseUrl }}
+            - name: APPFLOWY_BASE_URL
+              value: {{ .Values.global.gotrue.baseUrl }}
             - name: ADMIN_FRONTEND_REDIS_URL
               value: {{ .Values.global.redis.uri }}
             - name: ADMIN_FRONTEND_APPFLOWY_CLOUD_URL
