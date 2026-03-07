@@ -203,14 +203,14 @@ postgresql:
 appflowy-admin:
   enabled: true
   image:
-    tag: latest
+    tag: 0.13.1
   fullnameOverride: appflowy-admin
 
 appflowy-gotrue:
   enabled: true
   fullnameOverride: appflowy-gotrue
   image:
-    tag: latest
+    tag: 0.13.1
   mailer:
     enabled: true
     # -- Set true if you want the users to sign up without confirmation email
@@ -221,7 +221,7 @@ appflowy-gotrue:
 
 appflowy-cloud:
   image:
-    tag: latest
+    tag: 0.13.1
   enabled: true
   fullnameOverride: appflowy-cloud
   gotrue:
@@ -233,15 +233,15 @@ appflowy-cloud:
 
 appflowy-web:
   image:
-    tag: latest
-  enabled: false
+    tag: 0.11.1
+  enabled: true
   fullnameOverride: appflowy-web
   ingress:
     enabled: true
 
 appflowy-worker:
   image:
-    tag: latest
+    tag: 0.13.1
   enabled: true
   fullnameOverride: appflowy-worker
 
