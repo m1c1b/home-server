@@ -7,6 +7,16 @@ metadata:
 spec:
   concurrency: 1
   cordon: true
+  window:
+    days:
+      - monday
+      - tuesday
+      - wednesday
+      - thursday
+      - friday
+    startTime: 04:00
+    endTime: 07:00
+    timeZone: 'UTC'
   nodeSelector:
     matchExpressions:
       - key: node-role.kubernetes.io/control-plane
