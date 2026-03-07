@@ -44,28 +44,6 @@ spec:
               mountPath: /config
             - name: media
               mountPath: /mnt/media
-#          livenessProbe:
-#            httpGet:
-#              path: /api/v3/system/status
-#              port: 8686
-#              httpHeaders:
-#                - name: X-Api-Key
-#                  value: "3ead64faf4234a43b3bb46ca2a15244b"
-#            initialDelaySeconds: 30
-#            periodSeconds: 10
-#            timeoutSeconds: 5
-#            failureThreshold: 3
-#          readinessProbe:
-#            httpGet:
-#              path: /api/v3/system/status
-#              port: 8686
-#              httpHeaders:
-#                - name: X-Api-Key
-#                  value: "3ead64faf4234a43b3bb46ca2a15244b"
-#            initialDelaySeconds: 15
-#            periodSeconds: 5
-#            timeoutSeconds: 5
-#            failureThreshold: 3
           resources:
             requests:
               memory: "256Mi"

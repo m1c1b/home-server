@@ -42,28 +42,6 @@ spec:
               mountPath: /config
             - name: downloads
               mountPath: /mnt/media/downloads
-#          livenessProbe:
-#            httpGet:
-#              path: /api/v3/system/status
-#              port: 9696
-#              httpHeaders:
-#                - name: X-Api-Key
-#                  value: "e252a5c613974923b7f1f0357e03582b"
-#            initialDelaySeconds: 30
-#            periodSeconds: 10
-#            timeoutSeconds: 5
-#            failureThreshold: 3
-#          readinessProbe:
-#            httpGet:
-#              path: /api/v3/system/status
-#              port: 9696
-#              httpHeaders:
-#                - name: X-Api-Key
-#                  value: "e252a5c613974923b7f1f0357e03582b"
-#            initialDelaySeconds: 15
-#            periodSeconds: 5
-#            timeoutSeconds: 5
-#            failureThreshold: 3
           resources:
             requests:
               memory: "256Mi"
