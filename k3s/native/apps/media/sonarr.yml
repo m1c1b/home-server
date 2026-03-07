@@ -1,0 +1,101 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonarr
+  namespace: sonarr
+  labels:
+    app: sonarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonarr
+  template:
+    metadata:
+      labels:
+        app: sonarr
+    spec:
+      securityContext:
+        runAsUser: 0
+        fsGroup: 1000
+      initContainers:
+        - name: fix-permissions
+          image: busybox:1.36
+          command: [ "sh", "-c", "chown -R 1000:1000 /mnt/media" ]
+          volumeMounts:
+            - name: media
+              mountPath: /mnt/media
+      containers:
+        - name: sonarr
+          image: lscr.io/linuxserver/sonarr:latest
+          ports:
+            - containerPort: 8989
+              name: http
+          env:
+            - name: PUID
+              value: "1000" # Рекомендуется использовать Kubernetes Secrets или ConfigMaps для конфиденциальных данных
+            - name: PGID
+              value: "1000" # Рекомендуется использовать Kubernetes Secrets или ConfigMaps для конфиденциальных данных
+            - name: TZ
+              value: "Etc/UTC"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: media
+              mountPath: /mnt/media
+          livenessProbe:
+            httpGet:
+              path: /api/v3/system/status
+              port: 8989
+              httpHeaders:
+                - name: X-Api-Key
+                  value: "975881c6c0274430acbaa868188c24d9"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v3/system/status
+              port: 8989
+              httpHeaders:
+                - name: X-Api-Key
+                  value: "975881c6c0274430acbaa868188c24d9"
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: config
+          hostPath:
+            path: /SSD/app-data/sonarr
+            type: DirectoryOrCreate
+        - name: media
+          hostPath:
+            path: /DATA/media
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarr
+  namespace: sonarr
+  labels:
+    app: sonarr
+spec:
+  selector:
+    app: sonarr
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 80
+      name: webui
+      targetPort: 8989

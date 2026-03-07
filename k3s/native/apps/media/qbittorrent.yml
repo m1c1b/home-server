@@ -1,0 +1,99 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qbittorrent
+  namespace: qbittorrent
+  labels:
+    app: qbittorrent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qbittorrent
+  template:
+    metadata:
+      labels:
+        app: qbittorrent
+    spec:
+      containers:
+        - name: qbittorrent
+          image: lscr.io/linuxserver/qbittorrent:latest
+          ports:
+            - containerPort: 80
+              protocol: TCP
+              name: webui
+            - containerPort: 25369
+              protocol: UDP
+              name: torrenting
+          env:
+            - name: PUID
+              value: "0" # Рекомендуется использовать Kubernetes Secrets или ConfigMaps для конфиденциальных данных
+            - name: PGID
+              value: "0" # Рекомендуется использовать Kubernetes Secrets или ConfigMaps для конфиденциальных данных
+            - name: TZ
+              value: "Etc/UTC"
+            - name: WEBUI_PORT
+              value: "80"
+            - name: TORRENTING_PORT
+              value: "25369"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: downloads
+              mountPath: /mnt/media/downloads
+#          livenessProbe:
+#            httpGet:
+#              path: /api/v3/system/status
+#              port: 9696
+#              httpHeaders:
+#                - name: X-Api-Key
+#                  value: "e252a5c613974923b7f1f0357e03582b"
+#            initialDelaySeconds: 30
+#            periodSeconds: 10
+#            timeoutSeconds: 5
+#            failureThreshold: 3
+#          readinessProbe:
+#            httpGet:
+#              path: /api/v3/system/status
+#              port: 9696
+#              httpHeaders:
+#                - name: X-Api-Key
+#                  value: "e252a5c613974923b7f1f0357e03582b"
+#            initialDelaySeconds: 15
+#            periodSeconds: 5
+#            timeoutSeconds: 5
+#            failureThreshold: 3
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: config
+          hostPath:
+            path: /SSD/app-data/qbittorrent
+            type: DirectoryOrCreate
+        - name: downloads
+          hostPath:
+            path: /DATA/media/downloads
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qbittorrent
+  namespace: qbittorrent
+  labels:
+    app: qbittorrent
+spec:
+  selector:
+    app: qbittorrent
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 80
+      name: webui
+      targetPort: 80

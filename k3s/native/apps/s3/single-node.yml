@@ -1,0 +1,124 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: s3
+  namespace: s3
+  labels:
+    app: s3
+spec:
+  serviceName: "s3-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s3-pod
+  template:
+    metadata:
+      labels:
+        app: s3-pod
+    spec:
+      containers:
+        - name: s3
+          image: chrislusf/seaweedfs:4.03
+          args:
+            - server
+            - dir=/data
+            - s3
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: s3-creds
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: s3-creds
+                  key: AWS_SECRET_ACCESS_KEY
+          ports:
+            - containerPort: 9333
+            - containerPort: 19333
+            - containerPort: 8080
+          volumeMounts:
+            - name: s3-data
+              mountPath: /data
+#          readinessProbe:
+#            httpGet:
+#              path: /s3/health/ready
+#              port: 9000
+#            initialDelaySeconds: 5
+#            periodSeconds: 10
+#            timeoutSeconds: 5
+#          livenessProbe:
+#            httpGet:
+#              path: /s3/health/live
+#              port: 9000
+#            initialDelaySeconds: 10
+#            periodSeconds: 20
+#            timeoutSeconds: 5
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+        - name: s3-ui
+          image: cloudlena/s3manager
+          env:
+            - name: USE_SSL
+              value: "false"
+            - name: ENDPOINT
+              value: "localhost:9333"
+            - name: PORT
+              value: "8081"
+            - name: ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: s3-creds
+                  key: AWS_ACCESS_KEY_ID
+            - name: SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: s3-creds
+                  key: AWS_SECRET_ACCESS_KEY
+          ports:
+            - containerPort: 8081
+              name: ui
+  volumeClaimTemplates:
+    - metadata:
+        name: s3-data
+      spec:
+        volumeName: 's3'
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: "local-generic-storage"
+        resources:
+          requests:
+            storage: 100Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: s3-service
+  namespace: s3
+  labels:
+    app: s3
+spec:
+  type: ClusterIP
+  selector:
+    app: s3-pod
+  ports:
+    - port: 8333
+      targetPort: 8333
+      name: http
+---
+#apiVersion: v1
+#kind: Secret
+#metadata:
+#  name: s3-creds
+#  namespace: s3
+#type: Opaque
+#stringData:
+#  AWS_ACCESS_KEY_ID: ''
+#  AWS_SECRET_ACCESS_KEY: ''
+#---

@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: 3x-ui-paths
+  namespace: 3x-ui
+  annotations:
+    cert-manager.io/cluster-issuer: ca-issuer
+    cert-manager.io/common-name: x3-ui home
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - 'x3-ui.m1c1b.home'
+      secretName: 3x-ui-tls
+  rules:
+    - host: x3-ui.m1c1b.home
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: x3-ui
+              port:
+                name: webui

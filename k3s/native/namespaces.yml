@@ -1,0 +1,61 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: immich
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prowlarr
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: qbittorrent
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: radarr
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sonarr
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: 3x-ui
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minio
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: appflowy
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: seerr
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: s3
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: navidrome
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lidarr
+---

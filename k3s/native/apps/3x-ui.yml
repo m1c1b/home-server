@@ -1,0 +1,66 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: 3x-ui
+  namespace: 3x-ui
+  labels:
+    app: 3x-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: 3x-ui
+  template:
+    metadata:
+      labels:
+        app: 3x-ui
+    spec:
+      containers:
+        - name: 3x-ui
+          image: bigbugcc/3x-ui:v2.6.0
+          ports:
+            - containerPort: 2053
+              name: webui
+            - containerPort: 58472
+              protocol: TCP
+              name: http-proxy
+          env:
+            - name: XRAY_VMESS_AEAD_FORCED
+              value: "false"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/x-ui
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: config
+          hostPath:
+            path: /SSD/app-data/x3-ui/db
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: x3-ui
+  namespace: 3x-ui
+  labels:
+    app: 3x-ui
+spec:
+  selector:
+    app: 3x-ui
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 80
+      name: webui
+      targetPort: webui
+    - protocol: TCP
+      port: 58472
+      name: http-proxy
+      targetPort: http-proxy

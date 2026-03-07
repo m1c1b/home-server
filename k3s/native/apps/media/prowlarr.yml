@@ -1,0 +1,85 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prowlarr
+  namespace: prowlarr
+  labels:
+    app: prowlarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prowlarr
+  template:
+    metadata:
+      labels:
+        app: prowlarr
+    spec:
+      containers:
+        - name: prowlarr
+          image: lscr.io/linuxserver/prowlarr:latest
+          ports:
+            - containerPort: 9696
+              name: http
+          env:
+            - name: PUID
+              value: "1000" # Рекомендуется использовать Kubernetes Secrets или ConfigMaps для конфиденциальных данных
+            - name: PGID
+              value: "1000" # Рекомендуется использовать Kubernetes Secrets или ConfigMaps для конфиденциальных данных
+            - name: TZ
+              value: "Etc/UTC"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+#          livenessProbe:
+#            httpGet:
+#              path: /api/v3/system/status
+#              port: 9696
+#              httpHeaders:
+#                - name: X-Api-Key
+#                  value: "e252a5c613974923b7f1f0357e03582b"
+#            initialDelaySeconds: 30
+#            periodSeconds: 10
+#            timeoutSeconds: 5
+#            failureThreshold: 3
+#          readinessProbe:
+#            httpGet:
+#              path: /api/v3/system/status
+#              port: 9696
+#              httpHeaders:
+#                - name: X-Api-Key
+#                  value: "e252a5c613974923b7f1f0357e03582b"
+#            initialDelaySeconds: 15
+#            periodSeconds: 5
+#            timeoutSeconds: 5
+#            failureThreshold: 3
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: config
+          hostPath:
+            path: /SSD/app-data/prowlarr
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prowlarr
+  namespace: prowlarr
+  labels:
+    app: prowlarr
+spec:
+  selector:
+    app: prowlarr
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 80
+      name: webui
+      targetPort: 9696
