@@ -1,0 +1,6 @@
+apiVersion: v2
+appVersion: 0.9.50
+description: AppFlowy Admin Console
+name: appflowy-admin
+type: application
+version: 0.1.0
