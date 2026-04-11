@@ -139,18 +139,18 @@ servers:
   - name: hosts
     parameters: /etc/hosts
     configBlock: |-
-      192.168.1.11 x3-ui.m1c1b.home
-      192.168.1.11 immich.m1c1b.home
-      192.168.1.11 prowlarr.m1c1b.home
-      192.168.1.11 qbt.m1c1b.home
-      192.168.1.11 radarr.m1c1b.home
-      192.168.1.11 sonarr.m1c1b.home
-      192.168.1.11 s3-api.m1c1b.home
-      192.168.1.11 s3-console.m1c1b.home
-      192.168.1.11 appflowy.m1c1b.home
-      192.168.1.11 seerr.m1c1b.home
-      192.168.1.11 music.m1c1b.home
-      192.168.1.11 lidarr.m1c1b.home
+      192.168.88.240 x3-ui.m1c1b.home
+      192.168.88.240 immich.m1c1b.home
+      192.168.88.240 prowlarr.m1c1b.home
+      192.168.88.240 qbt.m1c1b.home
+      192.168.88.240 radarr.m1c1b.home
+      192.168.88.240 sonarr.m1c1b.home
+      192.168.88.240 s3-api.m1c1b.home
+      192.168.88.240 s3-console.m1c1b.home
+      192.168.88.240 appflowy.m1c1b.home
+      192.168.88.240 seerr.m1c1b.home
+      192.168.88.240 music.m1c1b.home
+      192.168.88.240 lidarr.m1c1b.home
       fallthrough
 
 # Complete example with all the options:
@@ -247,7 +247,7 @@ podDisruptionBudget: {}
 #  - filename: m1c1b.home.db
 #    domain: m1c1b.home
 #    contents: |
-#      *.m1c1b.home. IN A   192.168.1.11
+#      *.m1c1b.home. IN A   192.168.88.240
 
 # optional array of sidecar containers
 extraContainers: []
