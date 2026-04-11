@@ -4,7 +4,7 @@ image:
   registry: index.docker.io
   repository: plexinc/pms-docker
   # -- If unset use "latest"
-  tag: "1.41.6.9685-d301f511a"
+  tag: "1.43.1.10611-1e34174b1"
   sha: ""
   pullPolicy: IfNotPresent
 
@@ -256,7 +256,8 @@ priorityClassName: ""
 # -- Common Labels for all resources created by this chart.
 commonLabels: { }
 
-extraEnv: { }
+extraEnv:
+  ADVERTISE_IP: "http://192.168.88.250:32400"
   # extraEnv:
   # This claim is optional, and is only used for the first startup of PMS
   # The claim is obtained from https://www.plex.tv/claim/ is is only valid for a few minutes
