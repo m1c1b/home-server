@@ -9,7 +9,7 @@ spec:
   accessModes:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: local-generic-storage
+  storageClassName: local-path
   local:
     path: /DATA/app-data/appflowy/pg
   nodeAffinity:
