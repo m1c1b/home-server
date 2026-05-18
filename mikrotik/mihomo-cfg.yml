@@ -1,0 +1,713 @@
+# ============================================================================
+# ШАБЛОН STARGATE
+# Полная конфигурация Mihomo/Meta с расширенными возможностями маршрутизации
+# Включает поддержку ZKEEN геоданных, GEOIP/GEOSITE правил и CDN-провайдеров
+# Документация: https://github.com/MetaCubeX/mihomo/blob/Meta/docs/config.yaml
+# ============================================================================
+
+# ============================================================================
+# === ОСНОВНЫЕ ПАРАМЕТРЫ ===
+# ============================================================================
+
+allow-lan: true
+mode: rule
+log-level: $LOG_LEVEL
+ipv6: $IPV6
+unified-delay: true
+external-controller: $EXTERNAL_CONTROLLER_ADDRESS:$UI_PORT
+external-ui: $EXTERNAL_UI_PATH
+external-ui-url: $EXTERNAL_UI_URL
+secret: $UI_SECRET
+
+profile:
+  store-selected: true # Сохранение выбора API для групп политик для использования при следующем запуске
+
+# ============================================================================
+# === ГЕОДАННЫЕ (ZKEEN) ===
+# ============================================================================
+
+geodata-mode: true
+
+geox-url:
+  geosite: "https://github.com/jameszeroX/zkeen-domains/releases/latest/download/zkeen.dat"
+  geoip: "https://github.com/jameszeroX/zkeen-ip/releases/latest/download/zkeenip.dat"
+
+geo-auto-update: true
+geo-update-interval: 24
+
+# ============================================================================
+# === АНАЛИЗ ТРАФИКА (SNIFFER) ===
+# ============================================================================
+
+sniffer:
+  enable: true
+  parse-pure-ip: true
+  force-dns-mapping: true
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+    QUIC:
+      ports: [443, 8443]
+
+# ============================================================================
+# === DNS НАСТРОЙКИ ===
+# ============================================================================
+
+dns:
+  enable: $DNS_ENABLE
+  use-system-hosts: $DNS_USE_SYSTEM_HOSTS
+  nameserver:
+    - system
+
+# ============================================================================
+# === СЛУШАТЕЛИ (LISTENERS) ===
+# ============================================================================
+
+listeners:
+  - name: mixed-in
+    type: mixed
+    port: $MIXED_PORT
+  $TUN_IN_AUTOCONFIG
+
+# ============================================================================
+# === ПОДПИСКИ НА ПРОКСИ (PROXY PROVIDERS) ===
+# ============================================================================
+
+proxy-providers:
+  $PROVIDERS_BLOCK
+
+# ============================================================================
+# === ОБЩИЕ ПАРАМЕТРЫ ПРОВЕРКИ (ANCHORS) ===
+# ============================================================================
+
+health_check: &health_check
+  url: $HEALTH_CHECK_URL
+  interval: 200
+  expected-status: $HEALTH_CHECK_EXPECTED_STATUS
+
+url_test: &url_test
+  url: $HEALTH_CHECK_URL
+  interval: 300
+  lazy: false
+  expected-status: $HEALTH_CHECK_EXPECTED_STATUS
+  tolerance: 50
+
+# ============================================================================
+# === СПИСКИ ПРОВАЙДЕРОВ И ФИЛЬТРЫ (ANCHORS) ===
+# ============================================================================
+
+providers_list: &providers_list
+  $PROVIDERS_LIST
+
+exclude_ru: &exclude_ru "(?i)🇷🇺|RU"
+filter_ru: &filter_ru "(?i)🇷🇺|RU"
+
+# ============================================================================
+# === СПИСКИ ПРОКСИ-ГРУПП (ANCHORS) ===
+# ============================================================================
+
+proxy_list_all: &proxy_list_all
+  - SELECTOR
+  - AUTO
+  - MANUAL
+  - RU_AUTO
+  - RU_MANUAL
+  - DIRECT
+
+proxy_list_youtube: &proxy_list_youtube
+  - RU_AUTO
+  - RU_MANUAL
+  - SELECTOR
+  - AUTO
+  - MANUAL
+  - DIRECT
+
+# ============================================================================
+# === ИКОНКИ (ОТДЕЛЬНЫЕ ЯКОРЯ ДЛЯ КАЖДОЙ) ===
+# ============================================================================
+
+icon_telegram: &icon_telegram https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Telegram.png
+icon_whatsapp: &icon_whatsapp https://github.com/OMchik33/Whatsapp-icon/blob/master/icons/whatsapp_194x194.png?raw=true
+icon_russia: &icon_russia https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Russia.png
+icon_direct: &icon_direct https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Direct.png
+icon_facebook: &icon_facebook https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Facebook.png
+icon_amazon: &icon_amazon https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Amazon.png
+icon_global: &icon_global https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Global.png
+icon_google: &icon_google https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Google.png
+icon_cloudflare: &icon_cloudflare https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Cloudflare.png
+icon_steam: &icon_steam https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Steam.png
+icon_discord: &icon_discord https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Discord.png
+icon_youtube: &icon_youtube https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/YouTube.png
+icon_twitch: &icon_twitch https://img.icons8.com/3d-fluency/94/twitch.png
+icon_bot: &icon_bot https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Dark/Bot.png
+icon_microsoft: &icon_microsoft https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Dark/Microsoft.png
+icon_download: &icon_download https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Download.png
+icon_media: &icon_media https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Media.png
+icon_puzzle: &icon_puzzle https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Puzzle.png
+
+# ============================================================================
+# === БАЗОВЫЕ ШАБЛОНЫ ПРАВИЛ (RULE PROVIDER BASES) ===
+# ============================================================================
+
+rule_provider_base: &rule_provider_base
+  type: http
+  interval: 86400
+
+rule_behavior_domain_mrs: &rule_behavior_domain_mrs
+  <<: *rule_provider_base
+  behavior: domain
+  format: mrs
+
+rule_behavior_domain_yaml: &rule_behavior_domain_yaml
+  <<: *rule_provider_base
+  behavior: domain
+  format: yaml
+
+rule_behavior_ipcidr_mrs: &rule_behavior_ipcidr_mrs
+  <<: *rule_provider_base
+  behavior: ipcidr
+  format: mrs
+
+rule_behavior_ipcidr_yaml: &rule_behavior_ipcidr_yaml
+  <<: *rule_provider_base
+  behavior: ipcidr
+  format: yaml
+
+rule_behavior_classical_yaml: &rule_behavior_classical_yaml
+  <<: *rule_provider_base
+  behavior: classical
+  format: yaml
+
+# ============================================================================
+# === ГРУППЫ ПРОКСИ (PROXY GROUPS) ===
+# ============================================================================
+
+proxy-groups:
+
+  # --------------------------------------------------------------------------
+  # ГЛАВНЫЙ СЕЛЕКТОР
+  # --------------------------------------------------------------------------
+
+  - name: SELECTOR
+    type: select
+    include-all: true
+    proxies:
+      - AUTO
+      - MANUAL
+      - RU_AUTO
+      - RU_MANUAL
+      - DIRECT
+
+    # --------------------------------------------------------------------------
+    # БАЗОВЫЕ АВТОМАТИЧЕСКИЕ ГРУППЫ (ИНОСТРАННЫЕ ПРОКСИ)
+    # --------------------------------------------------------------------------
+
+  - name: AUTO
+    type: fallback
+    proxies:
+      - FASTEST
+      - FAILOVER
+      - MANUAL
+      - DIRECT
+    <<: *health_check
+
+  - name: FASTEST
+    type: url-test
+    use: *providers_list
+    exclude-filter: *exclude_ru
+    <<: *url_test
+
+  - name: FAILOVER
+    type: fallback
+    use: *providers_list
+    exclude-filter: *exclude_ru
+    <<: *health_check
+
+  - name: MANUAL
+    type: select
+    use: *providers_list
+    exclude-filter: *exclude_ru
+
+    # --------------------------------------------------------------------------
+    # РОССИЙСКИЕ ПРОКСИ-ГРУППЫ
+    # --------------------------------------------------------------------------
+
+  - name: RU_AUTO
+    type: fallback
+    proxies:
+      - RU_FASTEST
+      - RU_FAILOVER
+      - RU_MANUAL
+      - DIRECT
+    filter: *filter_ru
+    <<: *health_check
+
+  - name: RU_MANUAL
+    type: select
+    use: *providers_list
+    filter: *filter_ru
+
+  - name: RU_FASTEST
+    type: url-test
+    use: *providers_list
+    filter: *filter_ru
+    <<: *url_test
+
+  - name: RU_FAILOVER
+    type: fallback
+    use: *providers_list
+    filter: *filter_ru
+    <<: *health_check
+
+    # --------------------------------------------------------------------------
+    # СИСТЕМНЫЕ ГРУППЫ
+    # --------------------------------------------------------------------------
+
+  - name: GLOBAL
+    type: select
+    hidden: true
+    icon: *icon_global
+    proxies: *proxy_list_all
+
+  - name: QUIC
+    type: select
+    proxies:
+      - PASS
+      - REJECT
+
+    # --------------------------------------------------------------------------
+    # ПОПУЛЯРНЫЕ СЕРВИСЫ (числовые префиксы — стоят вверху UI)
+    # --------------------------------------------------------------------------
+
+  - name: 1. Telegram
+    type: select
+    icon: *icon_telegram
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: 2. WhatsApp
+    type: select
+    icon: *icon_whatsapp
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: 3. YouTube
+    type: select
+    icon: *icon_youtube
+    include-all: false
+    proxies: *proxy_list_youtube
+
+  - name: 4. Discord
+    type: select
+    icon: *icon_discord
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: 5. Steam
+    type: select
+    icon: *icon_steam
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: 6. Twitch
+    type: select
+    icon: *icon_twitch
+    include-all: false
+    proxies: *proxy_list_all
+
+    # --------------------------------------------------------------------------
+    # AI — объединённая группа (OpenAI, Anthropic, Gemini, Perplexity, xAI,
+    #        HuggingFace, Midjourney, Character.AI, инструменты разработки)
+    # --------------------------------------------------------------------------
+
+  - name: 7. AI
+    type: select
+    icon: *icon_bot
+    include-all: false
+    proxies: *proxy_list_all
+
+    # --------------------------------------------------------------------------
+    # ГРУППЫ ПО СЕРВИСАМ
+    # --------------------------------------------------------------------------
+
+  - name: Ru-Traffic
+    type: select
+    icon: *icon_russia
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: ECH-Refilter
+    type: select
+    icon: *icon_direct
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: META
+    type: select
+    icon: *icon_facebook
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: AMAZON
+    type: select
+    icon: *icon_amazon
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: FASTLY
+    type: select
+    icon: *icon_global
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: AKAMAI
+    type: select
+    icon: *icon_global
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: GOOGLE
+    type: select
+    icon: *icon_google
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: CLOUDFLARE
+    type: select
+    icon: *icon_cloudflare
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: CDN77
+    type: select
+    icon: *icon_global
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: DIGITALOCEAN
+    type: select
+    icon: *icon_global
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: HETZNER
+    type: select
+    icon: *icon_global
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: MEGA
+    type: select
+    icon: *icon_global
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: ORACLE
+    type: select
+    icon: *icon_global
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: OVH
+    type: select
+    icon: *icon_global
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: VULTR
+    type: select
+    icon: *icon_global
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: Microsoft
+    type: select
+    icon: *icon_microsoft
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: Torrent-Traffic
+    type: select
+    icon: *icon_download
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: Politic-Domains
+    type: select
+    icon: *icon_media
+    include-all: false
+    proxies: *proxy_list_all
+
+  - name: Other-Domains
+    type: select
+    icon: *icon_puzzle
+    include-all: false
+    proxies: *proxy_list_all
+
+# ============================================================================
+# === ВНЕШНИЕ НАБОРЫ ПРАВИЛ (RULE PROVIDERS) ===
+# ============================================================================
+
+rule-providers:
+
+  telegram-domains:
+    <<: *rule_behavior_domain_mrs
+    url: https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/telegram.mrs
+    path: ./rule-sets/telegram-domains.mrs
+
+  telegram-ips:
+    <<: *rule_behavior_ipcidr_yaml
+    url: https://raw.githubusercontent.com/OMchik33/custom-rules/refs/heads/main/mihomo/telegram-ips.yaml
+    path: ./rule-sets/telegram-ips.yaml
+
+  whatsapp-domains:
+    <<: *rule_behavior_domain_mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/whatsapp.mrs
+    path: ./rule-sets/whatsapp-domains.mrs
+
+  whatsapp-ips:
+    <<: *rule_behavior_ipcidr_yaml
+    url: https://raw.githubusercontent.com/OMchik33/custom-rules/refs/heads/main/mihomo/whatsapp-ips.yaml
+    path: ./rule-sets/whatsapp-ips.yaml
+
+  steam-domains:
+    <<: *rule_behavior_domain_yaml
+    url: https://raw.githubusercontent.com/OMchik33/custom-rules/refs/heads/main/mihomo/gaming-domains.yaml
+    path: ./rule-sets/steam-domains.yaml
+
+  steam-ips:
+    <<: *rule_behavior_ipcidr_yaml
+    url: https://raw.githubusercontent.com/OMchik33/custom-rules/refs/heads/main/mihomo/gaming-ips.yaml
+    path: ./rule-sets/steam-ips.yaml
+
+  twitch-domains:
+    <<: *rule_behavior_domain_mrs
+    url: https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/twitch.mrs
+    path: ./rule-sets/twitch-domains.mrs
+
+  discord-domains:
+    <<: *rule_behavior_domain_mrs
+    url: https://github.com/MetaCubeX/meta-rules-dat/raw/meta/geo/geosite/discord.mrs
+    path: ./rule-sets/discord-domains.mrs
+
+  discord-voiceips:
+    <<: *rule_behavior_ipcidr_mrs
+    url: https://github.com/legiz-ru/mihomo-rule-sets/raw/main/other/discord-voice-ip-list.mrs
+    path: ./rule-sets/discord-voiceips.mrs
+
+  youtube:
+    <<: *rule_behavior_domain_mrs
+    url: https://github.com/MetaCubeX/meta-rules-dat/raw/meta/geo/geosite/youtube.mrs
+    path: ./rule-sets/youtube.mrs
+
+  microsoft:
+    <<: *rule_behavior_domain_mrs
+    url: https://github.com/MetaCubeX/meta-rules-dat/raw/meta/geo/geosite/microsoft.mrs
+    path: ./rule-sets/microsoft.mrs
+
+    # AI-сервисы — все провайдеры ведут в одну группу "7. AI"
+  openai:
+    <<: *rule_behavior_domain_mrs
+    url: https://github.com/MetaCubeX/meta-rules-dat/raw/meta/geo/geosite/openai.mrs
+    path: ./rule-sets/openai.mrs
+
+  anthropic:
+    <<: *rule_behavior_domain_mrs
+    url: https://github.com/MetaCubeX/meta-rules-dat/raw/meta/geo/geosite/anthropic.mrs
+    path: ./rule-sets/anthropic.mrs
+
+  perplexity:
+    <<: *rule_behavior_domain_mrs
+    url: https://github.com/MetaCubeX/meta-rules-dat/raw/meta/geo/geosite/perplexity.mrs
+    path: ./rule-sets/perplexity.mrs
+
+  google-gemini:
+    <<: *rule_behavior_domain_mrs
+    url: https://github.com/MetaCubeX/meta-rules-dat/raw/meta/geo/geosite/google-gemini.mrs
+    path: ./rule-sets/google-gemini.mrs
+
+  refilter-noech:
+    <<: *rule_behavior_domain_mrs
+    url: https://github.com/legiz-ru/mihomo-rule-sets/raw/main/re-filter/re-filter-noech.mrs
+    path: ./rule-sets/refilter-noech.mrs
+
+  refilter-ech:
+    <<: *rule_behavior_domain_mrs
+    url: https://github.com/legiz-ru/mihomo-rule-sets/raw/main/re-filter/re-filter-ech.mrs
+    path: ./rule-sets/refilter-ech.mrs
+
+  refilter-ipsum:
+    <<: *rule_behavior_ipcidr_mrs
+    url: https://github.com/legiz-ru/mihomo-rule-sets/raw/main/re-filter/ip-rule.mrs
+    path: ./rule-sets/refilter-ip-rule.mrs
+
+  torrent-clients:
+    <<: *rule_behavior_classical_yaml
+    url: https://github.com/legiz-ru/mihomo-rule-sets/raw/main/other/torrent-clients.yaml
+    path: ./rule-sets/torrent-clients.yaml
+
+  torrent-trackers:
+    <<: *rule_behavior_domain_mrs
+    url: https://raw.githubusercontent.com/legiz-ru/mihomo-rule-sets/main/other/torrent-trackers.mrs
+    path: ./rule-sets/torrent-trackers.mrs
+
+  torrent-websites:
+    <<: *rule_behavior_domain_mrs
+    url: https://raw.githubusercontent.com/legiz-ru/mihomo-rule-sets/main/other/torrent-websites.mrs
+    path: ./rule-sets/torrent-websites.mrs
+
+  oisd_big:
+    <<: *rule_behavior_domain_mrs
+    url: "https://github.com/legiz-ru/mihomo-rule-sets/raw/main/oisd/big.mrs"
+    path: ./oisd/big.mrs
+
+    #  oisd_small:
+    #    <<: *rule_behavior_domain_mrs
+    #    url: "https://github.com/legiz-ru/mihomo-rule-sets/raw/main/oisd/small.mrs"
+    #    path: ./oisd/small.mrs
+
+    # --------------------------------------------------------------------------
+    # ВСТРОЕННЫЕ ПРАВИЛА (INLINE)
+    # --------------------------------------------------------------------------
+
+    # misc-ai — дополнительные AI-домены, которых нет в отдельных rule-sets
+  misc-ai:
+    type: inline
+    behavior: classical
+    format: text
+    payload:
+      # xAI (Grok)
+      - DOMAIN-SUFFIX,x.ai
+      - DOMAIN-SUFFIX,grok.x.ai
+      - DOMAIN-SUFFIX,api.x.ai
+      - DOMAIN-KEYWORD,grok
+      # Hugging Face
+      - DOMAIN-SUFFIX,huggingface.co
+      - DOMAIN-SUFFIX,hf.co
+      - DOMAIN-SUFFIX,hf.space
+      - DOMAIN-SUFFIX,huggingface.com
+      - DOMAIN-KEYWORD,huggingface
+      # Midjourney и другие ИИ для изображений
+      - DOMAIN-SUFFIX,midjourney.com
+      - DOMAIN-SUFFIX,cdn.midjourney.com
+      - DOMAIN-KEYWORD,midjourney
+      - DOMAIN-SUFFIX,stability.ai
+      - DOMAIN-SUFFIX,stablediffusionweb.com
+      - DOMAIN-SUFFIX,dreamstudio.ai
+      - DOMAIN-SUFFIX,runwayml.com
+      - DOMAIN-SUFFIX,runway.ml
+      # Character.AI и другие
+      - DOMAIN-SUFFIX,character.ai
+      - DOMAIN-SUFFIX,beta.character.ai
+      - DOMAIN-SUFFIX,replicate.com
+      - DOMAIN-SUFFIX,cohere.ai
+      - DOMAIN-SUFFIX,cohere.com
+      # Инструменты для программистов
+      - DOMAIN-SUFFIX,jetbrains.com
+      - DOMAIN-SUFFIX,replit.com
+      - DOMAIN-SUFFIX,repl.it
+      - DOMAIN-SUFFIX,stackoverflow.com
+      - DOMAIN-SUFFIX,docker.com
+      - DOMAIN-SUFFIX,docker.io
+      - DOMAIN-SUFFIX,dockerstatic.com
+      - DOMAIN-SUFFIX,compose-spec.io
+      - DOMAIN-SUFFIX,npmjs.com
+      - DOMAIN-SUFFIX,pypi.org
+
+# ============================================================================
+# === ПРАВИЛА МАРШРУТИЗАЦИИ (RULES) ===
+# ============================================================================
+
+rules:
+  # Локальная сеть — всегда напрямую
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.88.99.0/24,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
+  - DOMAIN-SUFFIX,local,DIRECT
+  - DOMAIN-SUFFIX,lan,DIRECT
+
+  # QUIC-трафик (UDP/443)
+  - AND,((NETWORK,udp),(DST-PORT,443)),QUIC
+
+  # Проверка IP — через прокси для анонимности
+  - OR,((DOMAIN,ipwho.is),(DOMAIN,api.ip.sb),(DOMAIN,ipapi.co),(DOMAIN,ipinfo.io),(DOMAIN,2ip.io),(DOMAIN,2ip.ru)),SELECTOR
+
+  # Торренты
+  - OR,((RULE-SET,torrent-clients),(RULE-SET,torrent-trackers)),Torrent-Traffic
+  - RULE-SET,torrent-websites,Torrent-Traffic
+
+  # AI — единая группа (xAI, HuggingFace, Midjourney, Character.AI и прочие misc)
+  - RULE-SET,misc-ai,7. AI
+  # AI — крупные платформы (через официальные rule-sets)
+  - RULE-SET,anthropic,7. AI
+  - RULE-SET,perplexity,7. AI
+  - RULE-SET,google-gemini,7. AI
+  - RULE-SET,openai,7. AI
+
+  # Мессенджеры и коммуникации
+  - OR,((RULE-SET,telegram-domains),(RULE-SET,telegram-ips)),1. Telegram
+  - OR,((RULE-SET,whatsapp-domains),(RULE-SET,whatsapp-ips)),2. WhatsApp
+  - OR,((RULE-SET,discord-domains),(RULE-SET,discord-voiceips)),4. Discord
+
+  # Игровые платформы
+  - OR,((RULE-SET,steam-domains),(RULE-SET,steam-ips)),5. Steam
+
+  # Microsoft
+  - RULE-SET,microsoft,Microsoft
+
+  # Стриминг и видео
+  - RULE-SET,twitch-domains,6. Twitch
+  - RULE-SET,youtube,3. YouTube
+
+  # Российский трафик (по IP-геолокации ZKEEN)
+  - GEOIP,ru,Ru-Traffic
+
+  # CDN и облачные сервисы (по ZKEEN GEOIP)
+  - GEOIP,akamai,AKAMAI
+  - GEOIP,amazon,AMAZON
+  - GEOIP,fastly,FASTLY
+  - GEOIP,google,GOOGLE
+  - GEOIP,cloudflare,CLOUDFLARE
+  - GEOIP,cdn77,CDN77
+
+  # Правила для ускорения интернета с ECH
+  - DOMAIN,cloudflare-ech.com,SELECTOR
+  - RULE-SET,refilter-ech,DIRECT
+  - RULE-SET,refilter-noech,ECH-Refilter
+  - RULE-SET,refilter-ipsum,ECH-Refilter
+
+  # Облачные провайдеры и хостинги (по ZKEEN GEOIP)
+  - GEOIP,meta,META
+  - GEOIP,digitalocean,DIGITALOCEAN
+  - GEOIP,hetzner,HETZNER
+  - GEOIP,mega,MEGA
+  - GEOIP,oracle,ORACLE
+  - GEOIP,ovh,OVH
+  - GEOIP,vultr,VULTR
+
+  # Сайты, заблокированные в РФ или блокирующие РФ (по ZKEEN geosite)
+  - GEOSITE,domains,Other-Domains
+  - GEOSITE,other,Other-Domains
+  - GEOSITE,politic,Politic-Domains
+
+  # Общий запасной контур для голосовых и игровых портов
+  - OR,((DST-PORT,596-599),(DST-PORT,1400),(DST-PORT,3478-3480),(DST-PORT,4379-4380),(DST-PORT,5222),(DST-PORT,5223),(DST-PORT,5228),(DST-PORT,5242),(DST-PORT,6250),(DST-PORT,12000-65535),(DST-PORT,27101-65535),(DST-PORT,45395),(DST-PORT,50318),(DST-PORT,59234)),SELECTOR
+
+  # Трафик от TUN и mixed-интерфейсов
+  - IN-NAME,tun-in,SELECTOR
+  - IN-NAME,mixed-in,SELECTOR
+
+  # Правило по умолчанию
+  - MATCH,SELECTOR
+
+# ============================================================================
+# КОНЕЦ КОНФИГУРАЦИИ
+# ============================================================================
