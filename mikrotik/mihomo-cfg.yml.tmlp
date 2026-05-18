@@ -147,6 +147,7 @@ icon_microsoft: &icon_microsoft https://cdn.jsdelivr.net/gh/Koolson/Qure@master/
 icon_download: &icon_download https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Download.png
 icon_media: &icon_media https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Media.png
 icon_puzzle: &icon_puzzle https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Puzzle.png
+icon_music: &icon_music https://img.icons8.com/3d-fluency/94/music.png
 
 # ============================================================================
 # === БАЗОВЫЕ ШАБЛОНЫ ПРАВИЛ (RULE PROVIDER BASES) ===
@@ -447,6 +448,16 @@ proxy-groups:
     include-all: false
     proxies: *proxy_list_all
 
+    # --------------------------------------------------------------------------
+    # КАСТОМНЫЕ VPN-ДОМЕНЫ (принудительный VPN для отдельных сервисов)
+    # --------------------------------------------------------------------------
+
+  - name: Custom-VPN
+    type: select
+    icon: *icon_music
+    include-all: false
+    proxies: *proxy_list_all
+
 # ============================================================================
 # === ВНЕШНИЕ НАБОРЫ ПРАВИЛ (RULE PROVIDERS) ===
 # ============================================================================
@@ -558,6 +569,21 @@ rule-providers:
     <<: *rule_behavior_domain_mrs
     url: https://raw.githubusercontent.com/legiz-ru/mihomo-rule-sets/main/other/torrent-websites.mrs
     path: ./rule-sets/torrent-websites.mrs
+
+    # --------------------------------------------------------------------------
+    # КАСТОМНЫЕ VPN-ДОМЕНЫ
+    # --------------------------------------------------------------------------
+
+    # custom-vpn-domains — домены, принудительно заворачиваемые через VPN
+  custom-vpn-domains:
+    type: inline
+    behavior: classical
+    format: text
+    payload:
+      # SoundCloud
+      - DOMAIN-SUFFIX,soundcloud.com
+      - DOMAIN-SUFFIX,sndcdn.com
+      - DOMAIN-SUFFIX,soundcloudmail.com
 
   oisd_big:
     <<: *rule_behavior_domain_mrs
@@ -672,6 +698,9 @@ rules:
   # Стриминг и видео
   - RULE-SET,twitch-domains,6. Twitch
   - RULE-SET,youtube,3. YouTube
+
+  # Кастомные VPN-домены (принудительный VPN для отдельных сервисов)
+  - RULE-SET,custom-vpn-domains,Custom-VPN
 
   # Российский трафик (по IP-геолокации ZKEEN)
   - GEOIP,ru,Ru-Traffic
