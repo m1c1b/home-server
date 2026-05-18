@@ -70,14 +70,14 @@ listeners:
   - name: mixed-in
     type: mixed
     port: $MIXED_PORT
-  $TUN_IN_AUTOCONFIG
+$TUN_IN_AUTOCONFIG
 
 # ============================================================================
 # === ПОДПИСКИ НА ПРОКСИ (PROXY PROVIDERS) ===
 # ============================================================================
 
 proxy-providers:
-  $PROVIDERS_BLOCK
+$PROVIDERS_BLOCK
 
 # ============================================================================
 # === ОБЩИЕ ПАРАМЕТРЫ ПРОВЕРКИ (ANCHORS) ===
@@ -100,7 +100,7 @@ url_test: &url_test
 # ============================================================================
 
 providers_list: &providers_list
-  $PROVIDERS_LIST
+$PROVIDERS_LIST
 
 exclude_ru: &exclude_ru "(?i)🇷🇺|RU"
 filter_ru: &filter_ru "(?i)🇷🇺|RU"
@@ -636,6 +636,12 @@ rules:
 
   # QUIC-трафик (UDP/443)
   - AND,((NETWORK,udp),(DST-PORT,443)),QUIC
+
+  # Реклама / NSFW
+  #  - RULE-SET,oisd_small,Ad-Filter
+  - RULE-SET,oisd_big,REJECT
+  #  - RULE-SET,oisd_nsfw_small,Ad-Filter
+  #  - RULE-SET,oisd_nsfw_big,Ad-Filter
 
   # Проверка IP — через прокси для анонимности
   - OR,((DOMAIN,ipwho.is),(DOMAIN,api.ip.sb),(DOMAIN,ipapi.co),(DOMAIN,ipinfo.io),(DOMAIN,2ip.io),(DOMAIN,2ip.ru)),SELECTOR
