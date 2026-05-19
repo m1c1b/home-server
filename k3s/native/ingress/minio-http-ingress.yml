@@ -1,22 +1,22 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: minio-http-paths
-  namespace: minio
-  annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "20G"
-spec:
-  ingressClassName: nginx
-
-  rules:
-    - host: 's3-api-zxc.ru.tuna.am'
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: minio-service
-                port:
-                  name: http
----
+#apiVersion: networking.k8s.io/v1
+#kind: Ingress
+#metadata:
+#  name: minio-paths
+#  namespace: minio
+#  annotations:
+#    nginx.ingress.kubernetes.io/proxy-body-size: "20G"
+#spec:
+#  ingressClassName: nginx
+#
+#  rules:
+#    - host: 's3-api-zxc.ru.tuna.am'
+#      http:
+#        paths:
+#          - path: /
+#            pathType: Prefix
+#            backend:
+#              service:
+#                name: minio-service
+#                port:
+#                  name: http
+#---
