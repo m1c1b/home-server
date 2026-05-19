@@ -132,6 +132,7 @@ global:
         # -- Secret key name for the Google OAuth client secret
         key: oauthGoogleClientSecret
         # -- Secret value for the Google OAuth client secret
+        # revoked
         value: "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"
       discordClientSecret:
         # -- Secret key name for the Discord OAuth client secret
