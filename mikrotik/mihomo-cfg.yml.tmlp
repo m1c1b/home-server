@@ -605,6 +605,9 @@ rule-providers:
     behavior: classical
     format: text
     payload:
+      - DOMAIN-KEYWORD,claude
+      - DOMAIN-KEYWORD,anthropic
+
       # xAI (Grok)
       - DOMAIN-SUFFIX,x.ai
       - DOMAIN-SUFFIX,grok.x.ai
