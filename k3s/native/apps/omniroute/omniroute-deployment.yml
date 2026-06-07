@@ -1,0 +1,51 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omniroute
+  namespace: omniroute
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: omniroute
+  template:
+    metadata:
+      labels:
+        app: omniroute
+    spec:
+      securityContext:
+        runAsUser: 0
+        fsGroup: 1000
+      containers:
+        - name: omniroute
+          image: diegosouzapw/omniroute:3.8.9
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 20128
+              name: main
+          env: []
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: data
+          hostPath:
+            path: /DATA/app-data/omniroute/data
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: omniroute
+  namespace: omniroute
+  labels:
+    app: omniroute
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: main
+  selector:
+    app: omniroute
+---

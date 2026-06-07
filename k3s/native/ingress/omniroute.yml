@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: omniroute-paths
+  namespace: omniroute
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "1g"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: omniroute-zxc.ru.tuna.am
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: omniroute
+                port:
+                  number: 80
+---
