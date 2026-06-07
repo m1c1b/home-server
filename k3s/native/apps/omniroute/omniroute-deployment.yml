@@ -19,7 +19,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: omniroute
-          image: diegosouzapw/omniroute:3.8.9
+          image: diegosouzapw/omniroute:3.8.15
           imagePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 20128
@@ -28,6 +28,13 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /app/data
+        - name: redis
+          image: valkey/valkey:9-alpine
+          ports:
+            - containerPort: 6379
+          env:
+            - name: ALLOW_EMPTY_PASSWORD
+              value: 'yes'
       volumes:
         - name: data
           hostPath:
