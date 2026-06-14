@@ -19,7 +19,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: omniroute
-          image: diegosouzapw/omniroute:3.8.15
+          image: diegosouzapw/omniroute:3.8.24
           imagePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 20128
