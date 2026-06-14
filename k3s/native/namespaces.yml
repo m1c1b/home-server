@@ -64,3 +64,8 @@ kind: Namespace
 metadata:
   name: omniroute
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open-webui
+---
