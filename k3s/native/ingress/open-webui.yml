@@ -8,6 +8,16 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
+    - host: ai.m1c1b.home
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: open-webui
+                port:
+                  number: 80
     - host: ai-zxc.ru.tuna.am
       http:
         paths:

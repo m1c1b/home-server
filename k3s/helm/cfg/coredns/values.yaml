@@ -151,6 +151,8 @@ servers:
       192.168.88.250 seerr.m1c1b.home
       192.168.88.250 music.m1c1b.home
       192.168.88.250 lidarr.m1c1b.home
+      192.168.88.250 omniroute.m1c1b.home
+      192.168.88.250 ai.m1c1b.home
       fallthrough
 
 # Complete example with all the options:
