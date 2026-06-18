@@ -1,4 +1,24 @@
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: omniroute-wireguard
+  namespace: omniroute
+type: Opaque
+stringData:
+  wg0.conf: |
+    [Interface]
+    PrivateKey = +JUWxSSZFRML2RNASS7FUD4zdsftDZY9CunyXLbqxUE=
+    Address = 10.0.0.3/32
+    DNS = 1.1.1.1, 1.0.0.1
+    MTU = 1420
+
+    [Peer]
+    PublicKey = aBGq9FCtlnD0aecQ/7rgv0j+nSFs/i6hGRq5YojilQw=
+    PresharedKey = VLvaAGtNXyw3zFNmLBL7EGebLsRhnxPD5PkNLLZo1I8=
+    AllowedIPs = 0.0.0.0/0, ::/0
+    Endpoint = 10.43.175.169:22451
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,9 +37,47 @@ spec:
       securityContext:
         runAsUser: 0
         fsGroup: 1000
+      initContainers:
+        - name: wg-config
+          image: busybox:latest
+          command: ["sh", "-c", "cp /wg-secret/wg0.conf /gluetun/wireguard/wg0.conf && chmod 600 /gluetun/wireguard/wg0.conf"]
+          volumeMounts:
+            - name: wg-secret
+              mountPath: /wg-secret
+              readOnly: true
+            - name: gluetun-config
+              mountPath: /gluetun/wireguard
       containers:
+        - name: gluetun
+          image: qmcgaw/gluetun:latest
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          env:
+            - name: VPN_SERVICE_PROVIDER
+              value: "custom"
+            - name: VPN_TYPE
+              value: "wireguard"
+            - name: FIREWALL_OUTBOUND_SUBNETS
+              value: "10.42.0.0/16,10.43.0.0/16"
+            - name: BLOCK_MALICIOUS
+              value: "off"
+            - name: IPV6
+              value: "off"
+            - name: DNS_ADDRESS
+              value: "1.1.1.1"
+          volumeMounts:
+            - name: gluetun-config
+              mountPath: /gluetun/wireguard
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
         - name: omniroute
-          image: diegosouzapw/omniroute:3.8.24
+          image: diegosouzapw/omniroute:3.8.28
           imagePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 20128
@@ -36,6 +94,11 @@ spec:
             - name: ALLOW_EMPTY_PASSWORD
               value: 'yes'
       volumes:
+        - name: wg-secret
+          secret:
+            secretName: omniroute-wireguard
+        - name: gluetun-config
+          emptyDir: {}
         - name: data
           hostPath:
             path: /DATA/app-data/omniroute/data
