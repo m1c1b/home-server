@@ -1,0 +1,123 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: muse-wireguard
+  namespace: muse
+type: Opaque
+stringData:
+  wg0.conf: |
+    [Interface]
+    PrivateKey = qFs1ZkYISyxFSUL3U1JK7wmlBvUc/eQWCXMjszlMB34=
+    Address = 10.0.0.2/32
+    DNS = 1.1.1.1, 1.0.0.1
+    MTU = 1420
+
+    [Peer]
+    PublicKey = aBGq9FCtlnD0aecQ/7rgv0j+nSFs/i6hGRq5YojilQw=
+    PresharedKey = YGH98a6sX4ImCeOz4P2bLjNNKwO0deoktZtFKJaDUyY=
+    AllowedIPs = 0.0.0.0/0, ::/0
+    Endpoint = 10.43.175.169:22451
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: muse
+  namespace: muse
+  labels:
+    app: muse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: muse
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: muse
+    spec:
+      initContainers:
+        - name: wg-config
+          image: busybox:latest
+          command: ["sh", "-c", "cp /wg-secret/wg0.conf /gluetun/wireguard/wg0.conf && chmod 600 /gluetun/wireguard/wg0.conf"]
+          volumeMounts:
+            - name: wg-secret
+              mountPath: /wg-secret
+              readOnly: true
+            - name: gluetun-config
+              mountPath: /gluetun/wireguard
+      containers:
+        - name: gluetun
+          image: qmcgaw/gluetun:latest
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          env:
+            - name: VPN_SERVICE_PROVIDER
+              value: "custom"
+            - name: VPN_TYPE
+              value: "wireguard"
+            - name: FIREWALL_OUTBOUND_SUBNETS
+              value: "10.42.0.0/16,10.43.0.0/16"
+            - name: BLOCK_MALICIOUS
+              value: "off"
+            - name: IPV6
+              value: "off"
+            - name: DNS_ADDRESS
+              value: "1.1.1.1"
+          volumeMounts:
+            - name: gluetun-config
+              mountPath: /gluetun/wireguard
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+        - name: muse
+          image: ghcr.io/museofficial/muse:2.11.5-yt-dlp
+          envFrom:
+            - secretRef:
+                name: muse-secrets
+          env:
+            - name: CACHE_LIMIT
+              value: "2GB"
+            - name: YT_DLP_AUTO_UPDATE
+              value: "true"
+            - name: LOG_LEVEL
+              value: "debug"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+      volumes:
+        - name: wg-secret
+          secret:
+            secretName: muse-wireguard
+        - name: gluetun-config
+          emptyDir: {}
+        - name: data
+          hostPath:
+            path: /SSD/app-data/muse
+            type: DirectoryOrCreate
+---
+#apiVersion: v1
+#kind: Secret
+#metadata:
+#  name: muse-secrets
+#  namespace: muse
+#type: Opaque
+#stringData:
+#  DISCORD_TOKEN: ""
+#  YOUTUBE_API_KEY: ""
+#  SPOTIFY_CLIENT_ID: ""
+#  SPOTIFY_CLIENT_SECRET: ""
