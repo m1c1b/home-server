@@ -28,7 +28,7 @@ spec:
               mountPath: /mnt/media
       containers:
         - name: bazarr
-          image: lscr.io/linuxserver/bazarr:latest
+          image: lscr.io/linuxserver/bazarr:1.5.6
           ports:
             - containerPort: 6767
               name: http
