@@ -74,3 +74,8 @@ kind: Namespace
 metadata:
   name: muse
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bazarr
+---

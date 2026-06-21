@@ -1,0 +1,93 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bazarr
+  namespace: bazarr
+  labels:
+    app: bazarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bazarr
+  template:
+    metadata:
+      labels:
+        app: bazarr
+    spec:
+      securityContext:
+        runAsUser: 0
+        fsGroup: 1000
+      initContainers:
+        - name: fix-permissions
+          image: busybox:1.36
+          command: [ "sh", "-c", "chown -R 1000:1000 /mnt/media" ]
+          volumeMounts:
+            - name: media
+              mountPath: /mnt/media
+      containers:
+        - name: bazarr
+          image: lscr.io/linuxserver/bazarr:latest
+          ports:
+            - containerPort: 6767
+              name: http
+          env:
+            - name: PUID
+              value: "1000" # Рекомендуется использовать Kubernetes Secrets или ConfigMaps для конфиденциальных данных
+            - name: PGID
+              value: "1000" # Рекомендуется использовать Kubernetes Secrets или ConfigMaps для конфиденциальных данных
+            - name: TZ
+              value: "Etc/UTC"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: media
+              mountPath: /mnt/media
+          livenessProbe:
+            tcpSocket:
+              port: 6767
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 6767
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: config
+          hostPath:
+            path: /SSD/app-data/bazarr
+            type: DirectoryOrCreate
+        - name: media
+          hostPath:
+            path: /DATA/media
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bazarr
+  namespace: bazarr
+  labels:
+    app: bazarr
+spec:
+  selector:
+    app: bazarr
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 80
+      name: webui
+      targetPort: 6767

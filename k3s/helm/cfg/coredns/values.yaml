@@ -145,6 +145,7 @@ servers:
       192.168.88.250 qbt.m1c1b.home
       192.168.88.250 radarr.m1c1b.home
       192.168.88.250 sonarr.m1c1b.home
+      192.168.88.250 bazarr.m1c1b.home
       192.168.88.250 s3-api.m1c1b.home
       192.168.88.250 s3-console.m1c1b.home
       192.168.88.250 appflowy.m1c1b.home
