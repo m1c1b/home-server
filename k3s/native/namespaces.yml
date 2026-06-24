@@ -79,3 +79,8 @@ kind: Namespace
 metadata:
   name: bazarr
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: searxng
+---

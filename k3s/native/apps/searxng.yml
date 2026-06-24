@@ -1,0 +1,128 @@
+---
+# Конфигурация SearXNG. use_default_settings: true — наследуем дефолтные
+# настройки образа (полный список движков), переопределяем только нужное.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: searxng-settings
+  namespace: searxng
+data:
+  settings.yml: |
+    use_default_settings: true
+
+    general:
+      instance_name: "home-searxng"
+      # Внутренний инстанс — не публичный, отключаем donation/stats страницы
+      enable_metrics: false
+
+    server:
+      # Секретный ключ обязателен. Сгенерирован через openssl rand -hex 32.
+      secret_key: "f8604210e3d2a22f5a3bcb9a0d4479ab3d817f7473c7514ffe87ca5375958426"
+      # Internal-трафик доверенный — лимитер не нужен (и не требует redis/valkey)
+      limiter: false
+      public_instance: false
+      image_proxy: false
+
+    outgoing:
+      # Дефолтный таймаут 3s режет медленные движки (startpage/qwant). Поднимаем.
+      request_timeout: 6.0
+
+    search:
+      # Включаем JSON — без этого O‍penWebUI получает HTML и падает с ContentTypeError
+      formats:
+        - html
+        - json
+      safe_search: 0
+      autocomplete: ""
+
+    # Набор устойчивых движков без API-ключей. Один источник (duckduckgo) ненадёжен:
+    # brave периодически отдаёт 429 и self-suspend, поэтому держим несколько движков,
+    # чтобы временный бан одного не обнулял выдачу. Google и onion-движки отключены.
+    engines:
+      - name: google
+        disabled: true
+      # Постоянно таймаутит на серверном IP — только мусорит ERROR в лог
+      - name: startpage
+        disabled: true
+      # Onion-движки требуют Tor-прокси, которого нет → loading failed
+      - name: ahmia
+        disabled: true
+      - name: torch
+        disabled: true
+      - name: bing
+        disabled: false
+      - name: wikipedia
+        disabled: false
+      - name: wikidata
+        disabled: false
+      - name: mojeek
+        disabled: false
+      - name: qwant
+        disabled: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searxng
+  namespace: searxng
+  labels:
+    app: searxng
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: searxng
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: searxng
+    spec:
+      # k8s инжектит env вида SEARXNG_PORT=tcp://<ip>:8080 (имя Service == searxng),
+      # а entrypoint SearXNG читает SEARXNG_PORT как номер порта для granian → краш.
+      # Отключаем авто-инжект service-link переменных.
+      enableServiceLinks: false
+      containers:
+        - name: searxng
+          image: searxng/searxng:2026.6.23-e3713717f
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            # Базовый URL инстанса (используется в ссылках/opensearch)
+            - name: SEARXNG_BASE_URL
+              value: "http://searxng.m1c1b.home/"
+          volumeMounts:
+            - name: settings
+              mountPath: /etc/searxng/settings.yml
+              subPath: settings.yml
+              readOnly: true
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: settings
+          configMap:
+            name: searxng-settings
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: searxng
+  namespace: searxng
+  labels:
+    app: searxng
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: http
+      name: http
+  selector:
+    app: searxng
