@@ -113,6 +113,11 @@ proxy_list_all: &proxy_list_all
   - SELECTOR
   - AUTO
   - MANUAL
+  - VPN-1
+  - VPN-2
+  - VPN-3
+  - VPN-4
+  - VPN-5
   - RU_AUTO
   - RU_MANUAL
   - DIRECT
@@ -123,6 +128,11 @@ proxy_list_youtube: &proxy_list_youtube
   - SELECTOR
   - AUTO
   - MANUAL
+  - VPN-1
+  - VPN-2
+  - VPN-3
+  - VPN-4
+  - VPN-5
   - DIRECT
 
 # ============================================================================
@@ -194,10 +204,14 @@ proxy-groups:
 
   - name: SELECTOR
     type: select
-    include-all: true
     proxies:
       - AUTO
       - MANUAL
+      - VPN-1
+      - VPN-2
+      - VPN-3
+      - VPN-4
+      - VPN-5
       - RU_AUTO
       - RU_MANUAL
       - DIRECT
@@ -231,6 +245,37 @@ proxy-groups:
     type: select
     use: *providers_list
     exclude-filter: *exclude_ru
+
+    # --------------------------------------------------------------------------
+    # ИМЕНОВАННЫЕ VPN-СЛОТЫ (независимый выбор сервера для каждого сервиса)
+    # Каждый слот — ручной выбор любого конкретного сервера из подписок.
+    # Назначай разные слоты на разные сервисы, чтобы они шли через разные серверы.
+    # --------------------------------------------------------------------------
+
+  - name: VPN-1
+    type: select
+    icon: *icon_global
+    use: *providers_list
+
+  - name: VPN-2
+    type: select
+    icon: *icon_global
+    use: *providers_list
+
+  - name: VPN-3
+    type: select
+    icon: *icon_global
+    use: *providers_list
+
+  - name: VPN-4
+    type: select
+    icon: *icon_global
+    use: *providers_list
+
+  - name: VPN-5
+    type: select
+    icon: *icon_global
+    use: *providers_list
 
     # --------------------------------------------------------------------------
     # РОССИЙСКИЕ ПРОКСИ-ГРУППЫ
