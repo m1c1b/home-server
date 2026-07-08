@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: 3x-ui
-          image: bigbugcc/3x-ui:v2.6.0
+          image: bigbugcc/3x-ui:v3.4.2
           ports:
             - containerPort: 2053
               name: webui
