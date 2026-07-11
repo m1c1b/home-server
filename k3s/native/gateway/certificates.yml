@@ -1,0 +1,34 @@
+---
+# Явные Certificate-ресурсы для TLS-хостов на Gateway API (3x-ui, prowlarr).
+# Раньше эти сертификаты создавались неявно через cert-manager ingress-shim
+# (аннотации cert-manager.io/cluster-issuer на Ingress) - тогда Certificate был
+# привязан ownerReference'ом к Ingress и удалялся вместе с ним каскадно.
+# Gateway API TLS certificateRefs не создаёт Certificate автоматически, поэтому
+# нужны эти явные ресурсы, независимые от Ingress/HTTPRoute.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: 3x-ui-tls
+  namespace: 3x-ui
+spec:
+  secretName: 3x-ui-tls
+  commonName: x3-ui home
+  dnsNames:
+    - x3-ui.m1c1b.home
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: prowlarr-tls
+  namespace: prowlarr
+spec:
+  secretName: prowlarr-tls
+  commonName: Prowlarr home
+  dnsNames:
+    - prowlarr.m1c1b.home
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer

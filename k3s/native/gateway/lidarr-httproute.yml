@@ -1,0 +1,22 @@
+---
+# Миграция lidarr с Ingress на Gateway API HTTPRoute.
+# Эквивалент k3s/native/ingress/media/lidarr-ingress.yml.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: lidarr
+  namespace: lidarr
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: nginx-gateway
+  hostnames:
+    - "lidarr.m1c1b.home"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: lidarr
+          port: 80

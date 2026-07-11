@@ -1,0 +1,62 @@
+---
+# Миграция AppFlowy (5 Ingress под общим host appflowy.m1c1b.home) на один HTTPRoute
+# с несколькими правилами. Gateway API сам приоритизирует более специфичные path-match'и
+# независимо от порядка правил ниже (точное совпадение > более длинный префикс > catch-all "/").
+#
+# gotrue: оригинальный Ingress использовал regex "/gotrue(/|$)(.*)" + rewrite-target "/$2",
+# что эквивалентно "срезать префикс /gotrue и передать остаток бэкенду". То же самое
+# достигается стандартным Gateway API без regex: PathPrefix "/gotrue" + URLRewrite
+# ReplacePrefixMatch "/".
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: appflowy
+  namespace: appflowy
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: nginx-gateway
+  hostnames:
+    - "appflowy.m1c1b.home"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /gotrue
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: appflowy-gotrue
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /console
+      backendRefs:
+        - name: appflowy-admin
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: appflowy-cloud
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /ws
+      backendRefs:
+        - name: appflowy-cloud
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: appflowy-web
+          port: 80

@@ -1,0 +1,22 @@
+---
+# ingress-nginx по умолчанию делает force-ssl-redirect (http->https) для хостов,
+# у которых Ingress содержит tls-секцию. Этот HTTPRoute воспроизводит то же поведение
+# для x3-ui и prowlarr на HTTP-listener'е (порт 80) Gateway.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: tls-http-redirect
+  namespace: nginx-gateway
+spec:
+  parentRefs:
+    - name: main-gateway
+      sectionName: http
+  hostnames:
+    - "x3-ui.m1c1b.home"
+    - "prowlarr.m1c1b.home"
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301

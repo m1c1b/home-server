@@ -1,0 +1,33 @@
+---
+# ReferenceGrant разрешает Gateway (namespace nginx-gateway) ссылаться на TLS Secret'ы,
+# созданные cert-manager в namespace приложений (3x-ui, prowlarr), через certificateRefs.
+# Без этого Gateway API отклонит cross-namespace ссылку на Secret.
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-gateway-to-tls-secret
+  namespace: 3x-ui
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: nginx-gateway
+  to:
+    - group: ""
+      kind: Secret
+      name: 3x-ui-tls
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-gateway-to-tls-secret
+  namespace: prowlarr
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: nginx-gateway
+  to:
+    - group: ""
+      kind: Secret
+      name: prowlarr-tls

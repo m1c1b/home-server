@@ -96,7 +96,8 @@ config:
     storageClass: "local-generic-storage"
 
 ingress:
-  enabled: true
+  # Отключено: мигрировано на Gateway API (HTTPRoute) - см. k3s/native/gateway/seerr-httproute.yml
+  enabled: false
   ingressClassName: "nginx"
   annotations: {}
   #  kubernetes.io/ingress.class: nginx

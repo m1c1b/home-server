@@ -1,0 +1,55 @@
+---
+# Gateway для NGINX Gateway Fabric (миграция с ingress-nginx).
+# Отдельный GatewayClass "nginx-gateway-fabric" (см. k3s/helm/cfg/nginx-gateway-fabric/values.yaml),
+# чтобы не конфликтовать с существующим IngressClass "nginx" во время переходного периода.
+#
+# HTTP-listener без hostname (пускает любой Host), allowedRoutes.namespaces.from: All -
+# HTTPRoute можно создавать в namespace любого приложения, аналогично тому как один
+# ingress-nginx контроллер сейчас обслуживает все namespace'ы.
+#
+# Data-plane сервис (nginx) создаётся автоматически контроллером NGF при создании
+# этого Gateway - тип сервиса NodePort унаследован из values (nginx.service.type).
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: main-gateway
+  namespace: nginx-gateway
+spec:
+  gatewayClassName: nginx-gateway-fabric
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
+    # HTTPS listeners для TLS-сервисов - каждый привязан к своему hostname (SNI),
+    # ссылается напрямую на существующий Secret созданный cert-manager (ca-issuer).
+    # ReferenceGrant в namespace приложения (см. referencegrants.yml) разрешает
+    # эту cross-namespace ссылку.
+    - name: https-3x-ui
+      port: 443
+      protocol: HTTPS
+      hostname: "x3-ui.m1c1b.home"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: 3x-ui-tls
+            namespace: 3x-ui
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https-prowlarr
+      port: 443
+      protocol: HTTPS
+      hostname: "prowlarr.m1c1b.home"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: prowlarr-tls
+            namespace: prowlarr
+      allowedRoutes:
+        namespaces:
+          from: All

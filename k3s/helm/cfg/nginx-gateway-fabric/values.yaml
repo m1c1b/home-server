@@ -1,0 +1,18 @@
+# Values-override для NGINX Gateway Fabric (Gateway API реализация).
+# Устанавливается параллельно с ingress-nginx на время миграции.
+#
+# Кластер home-k3s - один node, bare-metal, без облачного LoadBalancer/MetalLB.
+# ingress-nginx уже занимает hostPort 80/443 через k3s ServiceLB (Service type: LoadBalancer),
+# поэтому data-plane сервис NGINX Gateway Fabric ставим как NodePort, чтобы не конфликтовать
+# с портами 80/443 до финального cutover.
+
+nginxGateway:
+  # Отдельное имя GatewayClass, чтобы не путать с существующим IngressClass "nginx" (ingress-nginx)
+  # во время переходного периода, когда оба контроллера работают одновременно.
+  gatewayClassName: nginx-gateway-fabric
+
+nginx:
+  service:
+    # NodePort вместо LoadBalancer: single-node k3s без MetalLB, порты 80/443 заняты ingress-nginx.
+    # После полной миграции переключим на LoadBalancer (см. план миграции).
+    type: NodePort
