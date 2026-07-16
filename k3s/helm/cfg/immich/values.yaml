@@ -11,7 +11,7 @@ controllers:
       main:
         image:
           # Версия Immich. Чарт НЕ обновляется вместе с каждым релизом Immich — задаём тег явно.
-          tag: v3.0.0
+          tag: v3.0.3
         env:
           # Внешняя БД (отдельный манифест k3s/native/apps/immich/pg-deployment.yml, НЕ helm-сабчарт).
           # Immich подключается под отдельной ролью immich/immich (НЕ суперюзером postgres);
