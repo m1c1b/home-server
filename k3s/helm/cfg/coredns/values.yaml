@@ -5,7 +5,7 @@
 image:
   repository: docker.io/coredns/coredns
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "1.12.2"
+  tag: "1.14.6"
   pullPolicy: IfNotPresent
   ## Optionally specify an array of imagePullSecrets.
   ## Secrets must be manually created in the namespace.
