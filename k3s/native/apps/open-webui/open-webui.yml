@@ -54,7 +54,7 @@ spec:
       volumes:
         - name: data
           hostPath:
-            path: /SSD/app-data/open-webui
+            path: /DATA/app-data/open-webui
             type: DirectoryOrCreate
 ---
 apiVersion: v1

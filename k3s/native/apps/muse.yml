@@ -107,7 +107,7 @@ spec:
           emptyDir: {}
         - name: data
           hostPath:
-            path: /SSD/app-data/muse
+            path: /DATA/app-data/muse
             type: DirectoryOrCreate
 ---
 #apiVersion: v1

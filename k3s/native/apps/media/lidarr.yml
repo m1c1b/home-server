@@ -54,7 +54,7 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /SSD/app-data/lidarr
+            path: /DATA/app-data/lidarr
             type: DirectoryOrCreate
         - name: media
           hostPath:

@@ -11,7 +11,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: prometheus-server
   local:
-    path: /SSD/app-data/prometheus
+    path: /DATA/app-data/prometheus
   nodeAffinity:
     required:
       nodeSelectorTerms:

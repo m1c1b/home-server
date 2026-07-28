@@ -11,7 +11,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: local-generic-storage
   local:
-    path: /SSD/app-data/plex
+    path: /DATA/app-data/plex
   nodeAffinity:
     required:
       nodeSelectorTerms:

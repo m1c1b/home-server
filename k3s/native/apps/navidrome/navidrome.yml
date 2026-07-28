@@ -54,7 +54,7 @@ spec:
       volumes:
         - name: data-volume
           hostPath:
-            path: /SSD/app-data/navidrome
+            path: /DATA/app-data/navidrome
             type: DirectoryOrCreate
         - name: music-volume
           hostPath:

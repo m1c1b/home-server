@@ -11,7 +11,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: local-generic-storage
   local:
-    path: /SSD/app-data/seerr
+    path: /DATA/app-data/seerr
   nodeAffinity:
     required:
       nodeSelectorTerms:

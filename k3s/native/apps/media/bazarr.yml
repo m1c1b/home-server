@@ -68,7 +68,7 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /SSD/app-data/bazarr
+            path: /DATA/app-data/bazarr
             type: DirectoryOrCreate
         - name: media
           hostPath:

@@ -76,7 +76,7 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /SSD/app-data/radarr
+            path: /DATA/app-data/radarr
             type: DirectoryOrCreate
         - name: media
           hostPath:

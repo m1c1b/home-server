@@ -52,7 +52,7 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /SSD/app-data/qbittorrent
+            path: /DATA/app-data/qbittorrent
             type: DirectoryOrCreate
         - name: downloads
           hostPath:

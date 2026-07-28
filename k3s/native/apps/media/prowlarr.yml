@@ -42,7 +42,7 @@ spec:
       volumes:
         - name: config
           hostPath:
-            path: /SSD/app-data/prowlarr
+            path: /DATA/app-data/prowlarr
             type: DirectoryOrCreate
 ---
 apiVersion: v1
