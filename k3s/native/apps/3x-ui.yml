@@ -55,7 +55,7 @@ spec:
             type: CharDevice
         - name: config
           hostPath:
-            path: /SSD/app-data/x3-ui/db
+            path: /DATA/app-data/x3-ui/db
             type: DirectoryOrCreate
 ---
 apiVersion: v1
