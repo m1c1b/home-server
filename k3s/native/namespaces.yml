@@ -102,3 +102,9 @@ metadata:
   labels:
     cdi.kubevirt.io: ""
 ---
+# kubevirt-manager: веб-UI для управления VM (с noVNC-консолью).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubevirt-manager
+---

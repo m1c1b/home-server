@@ -1,0 +1,57 @@
+---
+# Выставление kubevirt-manager UI на внутренний хост kubevirt.m1c1b.home.
+# Защита basic-auth через нативный AuthenticationFilter NGINX Gateway Fabric
+# (CRD authenticationfilters.gateway.nginx.org уже установлен в кластере),
+# а не через ingress-nginx аннотации и не через SnippetsFilter - файл htpasswd
+# монтировать в data-plane не нужно, NGF читает Secret сам.
+#
+# ВНИМАНИЕ: Secret ниже - ПЛЕЙСХОЛДЕР. Реальный htpasswd подставляется отдельно
+# (см. kubectl create secret ... type=nginx.org/htpasswd key=auth). Не применять
+# этот Secret с плейсхолдером на кластер - он содержит нерабочие данные.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubevirt-manager-basic-auth
+  namespace: kubevirt-manager
+type: Opaque
+data:
+  auth: PLACEHOLDER_REPLACE_WITH_BASE64_HTPASSWD
+---
+apiVersion: gateway.nginx.org/v1alpha1
+kind: AuthenticationFilter
+metadata:
+  name: kubevirt-manager-basic-auth
+  namespace: kubevirt-manager
+spec:
+  type: Basic
+  basic:
+    secretRef:
+      name: kubevirt-manager-basic-auth
+    realm: "kubevirt-manager"
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kubevirt-manager
+  namespace: kubevirt-manager
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: nginx-gateway
+      sectionName: http
+  hostnames:
+    - "kubevirt.m1c1b.home"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.nginx.org
+            kind: AuthenticationFilter
+            name: kubevirt-manager-basic-auth
+      backendRefs:
+        - name: kubevirt-manager
+          port: 8080
