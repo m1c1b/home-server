@@ -84,3 +84,21 @@ kind: Namespace
 metadata:
   name: searxng
 ---
+# KubeVirt: движок виртуализации. Namespace также создаётся оператором
+# (kubevirt-operator.yaml) с label pod-security enforce=privileged.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubevirt
+  labels:
+    kubevirt.io: ""
+    pod-security.kubernetes.io/enforce: "privileged"
+---
+# CDI (Containerized Data Importer): импорт/загрузка образов дисков для VM.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cdi
+  labels:
+    cdi.kubevirt.io: ""
+---
