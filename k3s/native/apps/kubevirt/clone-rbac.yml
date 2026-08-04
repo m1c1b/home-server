@@ -1,0 +1,36 @@
+# RBAC для cross-namespace клонирования дисков ВМ из каталога.
+#
+# VM в namespace vms клонирует DataSource из golden-images (sourceRef).
+# CDI требует, чтобы service account потребителя имел право create на
+# datavolumes/source в namespace-источнике. Без этого VM падает с
+# UnauthorizedDataVolumeCreate.
+#
+# Применение:
+#   kubectl --context home-k3s apply -f k3s/native/apps/kubevirt/clone-rbac.yml
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cdi-clone-source
+  namespace: golden-images
+rules:
+  - apiGroups:
+      - cdi.kubevirt.io
+    resources:
+      - datavolumes/source
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vms-default-clone-golden
+  namespace: golden-images
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cdi-clone-source
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: vms
