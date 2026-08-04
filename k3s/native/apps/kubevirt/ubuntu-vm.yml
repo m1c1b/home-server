@@ -31,6 +31,10 @@ spec:
     # ISO из каталога (клон DataSource) — подключается как cdrom.
     - metadata:
         name: ubuntu-vm-iso
+        annotations:
+          # local-path не CSI -> клон зависает в WaitForFirstConsumer.
+          # Флаг заставляет CDI клонировать сразу, не дожидаясь потребителя.
+          cdi.kubevirt.io/storage.bind.immediate.requested: "true"
       spec:
         sourceRef:
           kind: DataSource
