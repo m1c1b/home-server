@@ -25,6 +25,10 @@ kind: DataVolume
 metadata:
   name: golden-ubuntu-noble-iso
   namespace: golden-images
+  annotations:
+    # local-path не CSI + WaitForFirstConsumer -> дедлок импорта.
+    # Флаг заставляет CDI сразу создать importer-pod (bind immediate).
+    cdi.kubevirt.io/storage.bind.immediate.requested: "true"
 spec:
   source:
     http:
