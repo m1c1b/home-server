@@ -1,0 +1,50 @@
+# KubeVirt: каталог установочных ISO из локальной папки
+#
+# ISO лежат на ноде в /DATA/vm-images (см. image-fileserver.yml — раздаёт по http).
+# ISO импортируется в PVC и публикуется как DataSource. VM подключает его как
+# cdrom и грузится в установщик (ручная установка через VNC).
+#
+#   /DATA/vm-images/ubuntu/ubuntu-24.04.4-desktop-amd64.iso
+#         │  nginx (image-fileserver.yml) раздаёт по http
+#         ▼  DataVolume import
+#   ISO PVC ──> DataSource "ubuntu-noble-iso" ──sourceRef──> cdrom в VM
+#
+# Порядок применения:
+#   1. kubectl apply -f image-fileserver.yml   (namespace + nginx)
+#   2. положить .iso в /DATA/vm-images/ubuntu/  (см. README.md)
+#   3. kubectl apply -f image-catalog.yml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: golden-images
+---
+# Ubuntu 24.04 desktop ISO: импорт установочного образа в PVC (для boot как cdrom).
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: golden-ubuntu-noble-iso
+  namespace: golden-images
+spec:
+  source:
+    http:
+      url: "http://vm-images-server.golden-images/ubuntu/ubuntu-24.04.4-desktop-amd64.iso"
+  storage:
+    resources:
+      requests:
+        storage: 6Gi
+    storageClassName: local-path
+    accessModes:
+      - ReadWriteOnce
+---
+# DataSource публикует ISO PVC. VM ссылается на него: sourceRef -> ubuntu-noble-iso.
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataSource
+metadata:
+  name: ubuntu-noble-iso
+  namespace: golden-images
+spec:
+  source:
+    pvc:
+      namespace: golden-images
+      name: golden-ubuntu-noble-iso
