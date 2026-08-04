@@ -1,0 +1,97 @@
+# KubeVirt: виртуалка для установки Ubuntu 24.04 desktop с ISO
+#
+# ISO берётся из каталога golden-images (DataSource ubuntu-noble-iso),
+# см. image-catalog.yml. Каталог применить ПЕРВЫМ, до этой VM.
+#
+# VM грузится с cdrom (ISO), ставишь GNOME руками через VNC на пустой rootdisk.
+# После установки нужно отключить boot с cdrom (см. README.md).
+#
+# Состоит из:
+#   1. Namespace vms
+#   2. VirtualMachine: cdrom (ISO, bootOrder 1) + пустой rootdisk (bootOrder 2)
+#
+# Доступ к установщику: virtctl vnc ubuntu-vm -n vms
+#
+# Применение (после image-catalog.yml):
+#   kubectl --context home-k3s apply -f k3s/native/apps/kubevirt/ubuntu-vm.yml
+#
+# ВНИМАНИЕ ПО ПАМЯТИ: desktop-установщику нужно >=4Gi RAM. На ноде должно быть
+# >=4Gi свободно, иначе ВМ повиснет в Pending. Проверь: kubectl top nodes
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: ubuntu-vm
+  namespace: vms
+spec:
+  # runStrategy: Manual -> VM не рестартует сама (для установки удобнее).
+  # Управление: virtctl start/stop ubuntu-vm -n vms
+  runStrategy: Manual
+  dataVolumeTemplates:
+    # ISO из каталога (клон DataSource) — подключается как cdrom.
+    - metadata:
+        name: ubuntu-vm-iso
+      spec:
+        sourceRef:
+          kind: DataSource
+          namespace: golden-images
+          name: ubuntu-noble-iso
+        storage:
+          resources:
+            requests:
+              storage: 6Gi
+          storageClassName: local-path
+          accessModes:
+            - ReadWriteOnce
+    # Пустой диск под установку системы. 25Gi: GNOME (~7-8Gi) + свободное место.
+    # storageClassName vm-disks -> физически ляжет в /DATA/vm-disks/vms/ubuntu-vm-rootdisk/
+    - metadata:
+        name: ubuntu-vm-rootdisk
+      spec:
+        source:
+          blank: {}
+        storage:
+          resources:
+            requests:
+              storage: 25Gi
+          storageClassName: vm-disks
+          accessModes:
+            - ReadWriteOnce
+  template:
+    metadata:
+      labels:
+        kubevirt.io/vm: ubuntu-vm
+    spec:
+      domain:
+        cpu:
+          cores: 3
+        resources:
+          requests:
+            memory: 4Gi
+        devices:
+          disks:
+            # cdrom с ISO грузится первым (bootOrder 1)
+            - name: cdrom
+              cdrom:
+                bus: sata
+              bootOrder: 1
+            # пустой диск — цель установки, boot второй (bootOrder 2)
+            - name: rootdisk
+              disk:
+                bus: virtio
+              bootOrder: 2
+          interfaces:
+            - name: default
+              masquerade: { }
+        machine:
+          type: q35
+      networks:
+        - name: default
+          pod: { }
+      volumes:
+        - name: cdrom
+          dataVolume:
+            name: ubuntu-vm-iso
+        - name: rootdisk
+          dataVolume:
+            name: ubuntu-vm-rootdisk

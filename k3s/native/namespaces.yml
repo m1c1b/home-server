@@ -113,3 +113,8 @@ kind: Namespace
 metadata:
   name: golden-images
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vms
+---
