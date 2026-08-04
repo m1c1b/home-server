@@ -108,3 +108,8 @@ kind: Namespace
 metadata:
   name: kubevirt-manager
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: golden-images
+---

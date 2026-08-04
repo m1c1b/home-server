@@ -1,0 +1,55 @@
+# KubeVirt: файл-сервер для каталога базовых образов (замена minio)
+#
+# Раздаёт /DATA/vm-images с ноды по http. Кладёшь .img в эту папку на диске —
+# CDI импортирует их через source.http (см. image-catalog.yml).
+#
+#   /DATA/vm-images/ubuntu/noble.img  ──hostPath──> nginx ──http──> CDI import
+#
+# Применение:
+#   kubectl --context home-k3s apply -f k3s/native/apps/kubevirt/image-fileserver.yml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vm-images-server
+  namespace: golden-images
+  labels:
+    app: vm-images-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vm-images-server
+  template:
+    metadata:
+      labels:
+        app: vm-images-server
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: images
+              mountPath: /usr/share/nginx/html
+              readOnly: true
+      volumes:
+        - name: images
+          hostPath:
+            path: /DATA/vm-images
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vm-images-server
+  namespace: golden-images
+spec:
+  selector:
+    app: vm-images-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
