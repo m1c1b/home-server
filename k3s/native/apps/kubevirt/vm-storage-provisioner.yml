@@ -1,0 +1,152 @@
+# Отдельный local-path-provisioner для дисков ВМ на /DATA.
+#
+# Системный k3s local-path кладёт тома на root / (мало места) и его configmap
+# управляется k3s (правка перезатрётся при апгрейде). Поэтому здесь — независимый
+# экземпляр provisioner со своим configmap (путь /DATA/vm-disks) и своим именем
+# провизионера cluster.local/vm-disks. StorageClass vm-disks завязан на него.
+#
+# Диск ВМ ляжет в: /DATA/vm-disks/<namespace>/<pvc-name>/
+#
+# Требует папку на ноде: mkdir -m 0777 -p /DATA/vm-disks
+#
+# Применение:
+#   kubectl --context home-k3s apply -f k3s/native/apps/kubevirt/vm-storage-provisioner.yml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vm-disks-provisioner
+  namespace: vm-storage
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vm-disks-provisioner
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "persistentvolumeclaims", "configmaps", "pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "patch", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["update"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["endpoints", "persistentvolumes", "pods"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vm-disks-provisioner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vm-disks-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: vm-disks-provisioner
+    namespace: vm-storage
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vm-disks-provisioner
+  namespace: vm-storage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vm-disks-provisioner
+  template:
+    metadata:
+      labels:
+        app: vm-disks-provisioner
+    spec:
+      serviceAccountName: vm-disks-provisioner
+      containers:
+        - name: local-path-provisioner
+          image: docker.io/rancher/local-path-provisioner:v0.0.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - local-path-provisioner
+            - start
+            - --config
+            - /etc/config/config.json
+            - --provisioner-name
+            - cluster.local/vm-disks
+            - --configmap-name
+            - vm-disks-config
+            - --service-account-name
+            - vm-disks-provisioner
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config/
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONFIG_MOUNT_PATH
+              value: /etc/config/
+      volumes:
+        - name: config-volume
+          configMap:
+            name: vm-disks-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vm-disks-config
+  namespace: vm-storage
+data:
+  config.json: |
+    {
+      "nodePathMap":[
+        {
+          "node":"DEFAULT_PATH_FOR_NON_LISTED_NODES",
+          "paths":["/DATA/vm-disks"]
+        }
+      ]
+    }
+  setup: |
+    #!/bin/sh
+    set -eu
+    mkdir -m 0777 -p "$VOL_DIR"
+  teardown: |
+    #!/bin/sh
+    set -eu
+    rm -rf "$VOL_DIR"
+  helperPod.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: helper-pod
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - key: node.kubernetes.io/disk-pressure
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: helper-pod
+          image: docker.io/library/busybox
+          imagePullPolicy: IfNotPresent
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: vm-disks
+provisioner: cluster.local/vm-disks
+parameters:
+  pathPattern: "{{ .PVC.Namespace }}/{{ .PVC.Name }}/"
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+allowVolumeExpansion: true

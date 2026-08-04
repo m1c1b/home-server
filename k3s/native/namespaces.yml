@@ -118,3 +118,8 @@ kind: Namespace
 metadata:
   name: vms
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vm-storage
+---
