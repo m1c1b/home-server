@@ -59,8 +59,15 @@ sniffer:
 dns:
   enable: $DNS_ENABLE
   use-system-hosts: $DNS_USE_SYSTEM_HOSTS
+  # Единая точка правды — встроенный DNS RouterOS (192.168.254.1, Bridge-Docker).
+  # Он сам разворачивает CNAME-цепочки (www.avito.ru и пр.), в отличие от
+  # nameserver:system, дёргавшего битый libc-резолвер контейнера с пустым ответом.
+  # default-nameserver — bootstrap, если DNS роутера временно недоступен.
+  default-nameserver:
+    - 192.168.254.1
+    - 8.8.8.8
   nameserver:
-    - system
+    - 192.168.254.1
 
 # ============================================================================
 # === СЛУШАТЕЛИ (LISTENERS) ===
@@ -643,6 +650,20 @@ rule-providers:
       - DOMAIN-SUFFIX,csis.org
       - DOMAIN-SUFFIX,megaphone.fm
 
+    # custom-ru-domains — российские домены, принудительно в группу Ru-Traffic
+  custom-ru-domains:
+    type: inline
+    behavior: classical
+    format: text
+    payload:
+      - DOMAIN-SUFFIX,ozon.ru
+      - DOMAIN-SUFFIX,ozone.ru
+      - DOMAIN-SUFFIX,zoozavr.ru
+      - DOMAIN-SUFFIX,avito.ru
+      - DOMAIN-SUFFIX,avito.st
+      - DOMAIN-SUFFIX,cdek.ru
+      - DOMAIN-SUFFIX,yandex.ru
+
   oisd_big:
     <<: *rule_behavior_domain_mrs
     url: "https://github.com/legiz-ru/mihomo-rule-sets/raw/main/oisd/big.mrs"
@@ -763,15 +784,11 @@ rules:
   # Кастомные VPN-домены (принудительный VPN для отдельных сервисов)
   - RULE-SET,custom-vpn-domains,Custom-VPN
 
+  # Кастомные российские домены (принудительно в Ru-Traffic, до GEOIP)
+  - RULE-SET,custom-ru-domains,Ru-Traffic
+
   # Российский трафик (по IP-геолокации ZKEEN)
   - GEOIP,ru,Ru-Traffic
-  - DOMAIN-SUFFIX,ozon.ru,Ru-Traffic
-  - DOMAIN-SUFFIX,ozone.ru,Ru-Traffic
-  - DOMAIN-SUFFIX,zoozavr.ru,Ru-Traffic
-  - DOMAIN-SUFFIX,avito.ru,Ru-Traffic
-  - DOMAIN-SUFFIX,avito.st,Ru-Traffic
-  - DOMAIN-SUFFIX,cdek.ru,Ru-Traffic
-  - DOMAIN-SUFFIX,yandex.ru,Ru-Traffic
 
   # CDN и облачные сервисы (по ZKEEN GEOIP)
   - GEOIP,akamai,AKAMAI
