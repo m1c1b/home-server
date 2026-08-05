@@ -75,10 +75,10 @@ spec:
         devices:
           disks:
             # cdrom с ISO грузится первым (bootOrder 1)
-            - name: cdrom
-              cdrom:
-                bus: sata
-              bootOrder: 1
+#            - name: cdrom
+#              cdrom:
+#                bus: sata
+#              bootOrder: 1
             # пустой диск — цель установки, boot второй (bootOrder 2)
             - name: rootdisk
               disk:
