@@ -640,6 +640,8 @@ rule-providers:
       - DOMAIN-SUFFIX,protondb.pages.dev
       # other
       - DOMAIN-SUFFIX,screen.studio
+      - DOMAIN-SUFFIX,csis.org
+      - DOMAIN-SUFFIX,megaphone.fm
 
   oisd_big:
     <<: *rule_behavior_domain_mrs
@@ -763,6 +765,13 @@ rules:
 
   # Российский трафик (по IP-геолокации ZKEEN)
   - GEOIP,ru,Ru-Traffic
+  - DOMAIN-SUFFIX,ozon.ru,Ru-Traffic
+  - DOMAIN-SUFFIX,ozone.ru,Ru-Traffic
+  - DOMAIN-SUFFIX,zoozavr.ru,Ru-Traffic
+  - DOMAIN-SUFFIX,avito.ru,Ru-Traffic
+  - DOMAIN-SUFFIX,avito.st,Ru-Traffic
+  - DOMAIN-SUFFIX,cdek.ru,Ru-Traffic
+  - DOMAIN-SUFFIX,yandex.ru,Ru-Traffic
 
   # CDN и облачные сервисы (по ZKEEN GEOIP)
   - GEOIP,akamai,AKAMAI
