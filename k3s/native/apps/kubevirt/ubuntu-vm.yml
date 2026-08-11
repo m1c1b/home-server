@@ -68,10 +68,10 @@ spec:
     spec:
       domain:
         cpu:
-          cores: 3
+          cores: 6
         resources:
           requests:
-            memory: 4Gi
+            memory: 16Gi
         devices:
           disks:
             # cdrom с ISO грузится первым (bootOrder 1)
