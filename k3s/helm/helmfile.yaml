@@ -1,0 +1,136 @@
+# Helmfile — декларативное описание Helm-релизов кластера home-k3s.
+# Отражает то, что реально задеплоено (helm list -A), плюс values-оверрайды
+# из cfg/ и один вендоренный чарт (appflowy) из app/.
+#
+# kubeContext (home-k3s) зашит в helmDefaults.
+# Применение:
+#   helmfile apply                 # синхронизировать все релизы
+#   helmfile -l name=immich apply  # только один релиз
+#   helmfile diff                  # показать расхождения без применения
+#
+# Версии чартов ЗАФИКСИРОВАНЫ под текущее состояние кластера — при апгрейде
+# правьте version здесь.
+
+# Апстрим-репозитории чартов. cfg/* — это только values-оверрайды к ним;
+# сами чарты тянутся отсюда (appflowy — локальный, без repo).
+repositories:
+  - name: jetstack
+    url: https://charts.jetstack.io
+  - name: coredns
+    url: https://coredns.github.io/helm
+  - name: immich
+    url: https://immich-app.github.io/immich-charts
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: emberstack
+    url: https://emberstack.github.io/helm-charts
+  - name: stakater
+    url: https://stakater.github.io/stakater-charts
+  - name: pree-helm-charts
+    url: https://charts.pree.dev
+  - name: plex
+    url: https://raw.githubusercontent.com/plexinc/pms-docker/gh-pages
+
+helmDefaults:
+  kubeContext: home-k3s
+  wait: true
+  timeout: 600
+  createNamespace: false
+
+releases:
+  # --- cert-manager стек (namespace cert-manager) ---
+  - name: cert-manager
+    namespace: cert-manager
+    chart: jetstack/cert-manager
+    version: v1.18.2
+    values:
+      - cfg/cert-manager/values.yaml
+
+  - name: trust-manager
+    namespace: cert-manager
+    chart: jetstack/trust-manager
+    version: v0.18.0
+    needs:
+      - cert-manager/cert-manager
+    values:
+      - cfg/trust-manager/values.yaml
+
+  # --- Сетевой стек ---
+  # nginx-gateway-fabric публикуется как OCI-чарт (не в classic-репозитории).
+  - name: ngf
+    namespace: nginx-gateway
+    chart: oci://ghcr.io/nginx/charts/nginx-gateway-fabric
+    version: 2.6.6
+    values:
+      - cfg/nginx-gateway-fabric/values.yaml
+
+  - name: coredns
+    namespace: kube-system
+    chart: coredns/coredns
+    version: 1.46.0
+    values:
+      - cfg/coredns/values.yaml
+
+  # --- Утилиты (reflector/reloader — синхронизация конфигов и секретов) ---
+  - name: reflector
+    namespace: reflector
+    chart: emberstack/reflector
+    version: 9.1.11
+    values:
+      - cfg/reflector/values.yaml
+
+  - name: reloader
+    namespace: reloader
+    chart: stakater/reloader
+    version: 2.1.3
+    values:
+      - cfg/reloader/values.yaml
+
+  # --- Приложения ---
+  # ВНИМАНИЕ: 0.13.1 установлена в кластере, но УБРАНА из публичного индекса
+  # immich (в репо сейчас максимум 0.12.0). helmfile diff/apply для immich будет
+  # падать с "no chart version found", пока версия не вернётся в индекс или чарт
+  # не завендорить локально в app/. Значение НЕ трогаем — отражаем реальность.
+  - name: immich
+    namespace: immich
+    chart: immich/immich
+    version: 0.13.1
+    values:
+      - cfg/immich/values.yaml
+
+  # ВНИМАНИЕ: как и immich — seerr-chart 3.3.0 установлен в кластере, но чарта
+  # больше НЕТ в индексе charts.pree.dev (репо отдаёт только overseerr/radarr/…).
+  # helmfile diff/apply для jellyseerr будет падать "no chart name found", пока
+  # источник не восстановится или чарт не завендорить в app/. Реальность как есть.
+  - name: jellyseerr
+    namespace: seerr
+    chart: pree-helm-charts/seerr-chart
+    version: 3.3.0
+    values:
+      - cfg/seerr-chart/values.yaml
+
+  - name: plex
+    namespace: plex
+    chart: plex/plex-media-server
+    version: 1.5.0
+    values:
+      - cfg/plex-media-server/values.yaml
+
+  # appflowy — единственный полностью вендоренный чарт (subcharts уже лежат в
+  # app/appflowy/charts). skipDeps:true обязателен: без него helmfile зовёт
+  # `helm dependency build`, а тот падает на закрытом bitnami-репо из Chart.lock
+  # (redis/postgresql/minio). Вендоренные charts/ используются как есть.
+  - name: appflowy
+    namespace: appflowy
+    chart: app/appflowy
+    version: 0.2.1
+    skipDeps: true
+
+  # prometheus — values присутствуют, но релиз в кластер НЕ установлен.
+  # Держим описание для полноты; installed:false, чтобы helmfile его не деплоил.
+  - name: prometheus
+    namespace: prometheus
+    chart: prometheus-community/prometheus
+    installed: false
+    values:
+      - cfg/prometheus/values.yaml
