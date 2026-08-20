@@ -116,6 +116,60 @@ releases:
     values:
       - cfg/plex-media-server/values.yaml
 
+  # openconcho — веб-UI для Honcho. OCI-чарт (repo в repositories не нужен,
+  # как и у ngf). Указывает на honcho-api по cluster-DNS (см. values).
+  #
+  # ПАТЧ SPA: openconcho имеет client-side guard (security-BogDRnhN.js) — блокирует
+  # сохранение инстанса с токеном, если baseUrl инстанса HTTP и не localhost.
+  # Honcho у нас только по HTTP (cluster-DNS), но прокси server-side (браузер шлёт
+  # токен на origin openconcho, X-Honcho-Upstream уходит в заголовке на pod),
+  # то есть токен НЕ уходит в браузер по HTTP к Honcho — guard избыточен.
+  # initContainer копирует статику в shared emptyDir и sed-патчит guard на no-op.
+  - name: openconcho
+    namespace: openconcho
+    chart: oci://ghcr.io/offendingcommit/charts/openconcho
+    version: 0.16.2
+    values:
+      - cfg/openconcho/values.yaml
+    strategicMergePatches:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: openconcho
+          namespace: openconcho
+        spec:
+          template:
+            spec:
+              initContainers:
+                - name: patch-spa-security
+                  image: ghcr.io/offendingcommit/openconcho-web:0.16.2
+                  imagePullPolicy: IfNotPresent
+                  command: ["/bin/sh", "-c"]
+                  args:
+                    - >-
+                      cp -r /usr/share/nginx/html/. /spa/ &&
+                      sed -i 's|function c(r){return e(r)?null:"API tokens require HTTPS unless connecting to localhost."}|function c(r){return null}|' /spa/assets/security-BogDRnhN.js &&
+                      grep -q 'function c(r){return null}' /spa/assets/security-BogDRnhN.js && echo "spa security guard patched"
+                  securityContext:
+                    runAsNonRoot: true
+                    runAsUser: 101
+                    runAsGroup: 101
+                    allowPrivilegeEscalation: false
+                    readOnlyRootFilesystem: true
+                    capabilities:
+                      drop: [ALL]
+                  volumeMounts:
+                    - name: spa-static
+                      mountPath: /spa
+              containers:
+                - name: openconcho
+                  volumeMounts:
+                    - name: spa-static
+                      mountPath: /usr/share/nginx/html
+              volumes:
+                - name: spa-static
+                  emptyDir: {}
+
   # appflowy — единственный полностью вендоренный чарт (subcharts уже лежат в
   # app/appflowy/charts). skipDeps:true обязателен: без него helmfile зовёт
   # `helm dependency build`, а тот падает на закрытом bitnami-репо из Chart.lock

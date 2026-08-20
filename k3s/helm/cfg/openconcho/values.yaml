@@ -1,0 +1,33 @@
+# Values-оверрайды для openconcho (веб-UI Honcho).
+# Чарт: oci://ghcr.io/offendingcommit/charts/openconcho (см. helmfile.yaml).
+#
+# openconcho — статический React-SPA + nginx-прокси на /api. Прокси серверный
+# (под openconcho -> Honcho), поэтому defaultUrl можно указывать cluster-DNS
+# Honcho: браузеру резолвить его не нужно, запросы идут через под.
+# API-ключ здесь НЕ задаётся — пользователь вводит JWT в UI (Settings), токен
+# хранится в localStorage браузера.
+
+honcho:
+  # Адрес Honcho, предзаполняемый в UI при первом заходе.
+  defaultUrl: "http://honcho-api.honcho.svc.cluster.local"
+  # SSRF-ограничение прокси: разрешаем форвардить только на Honcho.
+  upstreamAllowlist: "honcho-api.honcho.svc.cluster.local"
+
+service:
+  type: ClusterIP
+  port: 80
+
+# ОБХОД БАГА ЧАРТА 0.16.2: имя volume для /etc/nginx/conf.d генерится из
+# mountPath как trimPrefix "/" | replace "/" "-", даёт "etc-nginx-conf.d" —
+# а точки в именах volume k8s запрещает (deployment invalid). Нельзя просто
+# убрать этот mount: nginx-unprivileged entrypoint при старте пишет в
+# /etc/nginx/conf.d/default.conf (envsubst из /etc/nginx/templates), поэтому
+# readOnlyRootFilesystem=true ломает запуск ("Read-only file system").
+# Отключаем readOnlyRootFilesystem и убираем tmpfsMounts целиком — так
+# проблемный volume исчезает, а entrypoint может писать конфиг в root-FS.
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop: [ALL]
+tmpfsMounts: []

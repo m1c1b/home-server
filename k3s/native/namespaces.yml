@@ -96,6 +96,12 @@ kind: Namespace
 metadata:
   name: text-embeddings-inference
 ---
+# Веб-UI для Honcho (github.com/offendingcommit/openconcho), ставится через Helm.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openconcho
+---
 # KubeVirt: движок виртуализации. Namespace также создаётся оператором
 # (kubevirt-operator.yaml) с label pod-security enforce=privileged.
 apiVersion: v1
