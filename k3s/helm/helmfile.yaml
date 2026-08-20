@@ -136,7 +136,6 @@ releases:
         kind: Deployment
         metadata:
           name: openconcho
-          namespace: openconcho
         spec:
           template:
             spec:
