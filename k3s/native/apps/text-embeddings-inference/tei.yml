@@ -1,0 +1,102 @@
+---
+# -----------------------------------------------------------------------------
+# TEI (HuggingFace Text Embeddings Inference) — общий embedding-сервер кластера.
+# Вынесен в отдельный namespace, чтобы модель переиспользовали несколько
+# приложений (honcho и др.) через cluster-DNS:
+#   http://tei.text-embeddings-inference.svc.cluster.local/v1/embeddings  (OpenAI-совместимый, без auth)
+#
+# Модель BAAI/bge-m3: мультиязычная (в т.ч. русский), размерность 1024, до 8192 токенов.
+# Потребители ОБЯЗАНЫ согласовать размерность вектора (1024) со своей схемой (напр. pgvector).
+#
+# CPU-образ cpu-1.9.3 (в 1.7.0-1.8.1 был сломан MKL на CPU — берём 1.9.x;
+# тег latest — это GPU/CUDA). dtype float32: на CPU float16 медленнее.
+# Порт TEI по умолчанию 3000, слушает 0.0.0.0.
+# Модель (~1.2GB) кэшируется в /data (HUGGINGFACE_HUB_CACHE) на hostPath, чтобы
+# не перекачивать при рестарте пода.
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tei
+  namespace: text-embeddings-inference
+  labels:
+    app: tei
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: tei
+  template:
+    metadata:
+      labels:
+        app: tei
+    spec:
+      securityContext:
+        runAsUser: 0
+        fsGroup: 1000
+      containers:
+        - name: tei
+          image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.3
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - "--model-id"
+            - "BAAI/bge-m3"
+            - "--dtype"
+            - "float32"
+            - "--port"
+            - "3000"
+            - "--max-batch-tokens"
+            - "8192"
+            - "--auto-truncate"
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: HUGGINGFACE_HUB_CACHE
+              value: /data
+          volumeMounts:
+            - name: model-cache
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            # Первый старт качает модель (~1.2GB) — даём запас по времени.
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 120
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "2Gi"
+            limits:
+              memory: "4Gi"
+      volumes:
+        - name: model-cache
+          hostPath:
+            path: /DATA/app-data/text-embeddings-inference/cache
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tei
+  namespace: text-embeddings-inference
+  labels:
+    app: tei
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+  selector:
+    app: tei

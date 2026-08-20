@@ -69,12 +69,15 @@ data:
   DREAM_INDUCTION_MODEL_CONFIG__MODEL: "auto"
   DREAM_INDUCTION_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
 
-  # Эмбеддинги для pgvector. omniroute должен раздавать embedding-модель на /v1/embeddings.
-  # Если у omniroute нет embedding-провайдера — переключи EMBED_MESSAGES на "false"
-  # (тогда векторный поиск по сообщениям отключается), либо укажи прямой ключ OpenAI ниже.
+  # Эмбеддинги для pgvector. omniroute отдаёт только chat-модели (нет embedding-провайдера),
+  # поэтому используем общий embedding-сервер TEI в отдельном namespace
+  # text-embeddings-inference (k3s/native/apps/text-embeddings-inference/tei.yml).
+  # bge-m3 -> размерность вектора 1024, её ОБЯЗАТЕЛЬНО согласовать с EMBEDDING_VECTOR_DIMENSIONS.
+  # TEI отдаёт OpenAI-совместимый /v1/embeddings без auth; лишний Bearer от Honcho он игнорирует.
   EMBED_MESSAGES: "true"
-  EMBEDDING_MODEL_CONFIG__MODEL: "text-embedding-3-small"
-  EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+  EMBEDDING_VECTOR_DIMENSIONS: "1024"
+  EMBEDDING_MODEL_CONFIG__MODEL: "BAAI/bge-m3"
+  EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://tei.text-embeddings-inference.svc.cluster.local/v1"
 ---
 # -----------------------------------------------------------------------------
 # Секреты: API-ключ omniroute (создаётся в дашборде omniroute -> Endpoints).

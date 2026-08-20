@@ -89,6 +89,13 @@ kind: Namespace
 metadata:
   name: honcho
 ---
+# Общий сервер эмбеддингов (HuggingFace TEI). Отдельный namespace, чтобы модель
+# можно было переиспользовать несколькими приложениями (honcho и др.).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: text-embeddings-inference
+---
 # KubeVirt: движок виртуализации. Namespace также создаётся оператором
 # (kubevirt-operator.yaml) с label pod-security enforce=privileged.
 apiVersion: v1
