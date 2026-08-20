@@ -84,6 +84,11 @@ kind: Namespace
 metadata:
   name: searxng
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: honcho
+---
 # KubeVirt: движок виртуализации. Namespace также создаётся оператором
 # (kubevirt-operator.yaml) с label pod-security enforce=privileged.
 apiVersion: v1

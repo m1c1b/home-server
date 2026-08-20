@@ -1,0 +1,335 @@
+---
+# Honcho (https://github.com/plastic-labs/honcho) — self-hosting в k3s.
+# Портирование официального docker-compose:
+#   database (pgvector) + redis + api + deriver (фоновый воркер).
+# Публикуемый образ ghcr.io/plastic-labs/honcho используется вместо build-from-source
+# (в compose образ собирается локально, в кластере берём готовый релиз).
+#
+# Внешние ключи LLM-провайдера храним в Secret honcho-secrets (по образцу omniroute).
+# Настройки, не являющиеся секретами, — в ConfigMap honcho-config.
+
+# -----------------------------------------------------------------------------
+# init.sql для postgres: pgvector-расширение (эквивалент ./database/init.sql).
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: honcho-db-init
+  namespace: honcho
+data:
+  init.sql: |
+    CREATE EXTENSION IF NOT EXISTS vector;
+---
+# -----------------------------------------------------------------------------
+# Общие несекретные переменные окружения для api и deriver.
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: honcho-config
+  namespace: honcho
+data:
+  DB_CONNECTION_URI: "postgresql+psycopg://postgres:postgres@postgres:5432/postgres"
+  CACHE_URL: "redis://redis:6379/0?suppress=true"
+  CACHE_ENABLED: "true"
+  VECTOR_STORE_TYPE: "pgvector"
+  LOG_LEVEL: "INFO"
+  AUTH_USE_AUTH: "false"
+
+  # --- LLM через собственный omniroute (OpenAI-совместимый шлюз) ---
+  # Транспорт по умолчанию "openai", ключ берётся из LLM_OPENAI_API_KEY (Secret).
+  # base_url переопределяется отдельно для КАЖДОЙ LLM-фичи Honcho, поэтому
+  # прописываем OVERRIDES__BASE_URL на всех: deriver / dialectic / summary / dream.
+  # Service omniroute слушает :80 -> контейнер :20128, путь /v1.
+  # Модель "auto" = smart-routing omniroute (можно заменить на provider/model, напр. openai/gpt-4o).
+
+  # Фоновый воркер (извлечение памяти) — основной потребитель LLM.
+  DERIVER_MODEL_CONFIG__MODEL: "auto"
+  DERIVER_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+
+  # Dialectic chat (ответы о пользователе) — по одному уровню reasoning.
+  DIALECTIC_LEVELS__minimal__MODEL_CONFIG__MODEL: "auto"
+  DIALECTIC_LEVELS__minimal__MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+  DIALECTIC_LEVELS__low__MODEL_CONFIG__MODEL: "auto"
+  DIALECTIC_LEVELS__low__MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+  DIALECTIC_LEVELS__medium__MODEL_CONFIG__MODEL: "auto"
+  DIALECTIC_LEVELS__medium__MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+  DIALECTIC_LEVELS__high__MODEL_CONFIG__MODEL: "auto"
+  DIALECTIC_LEVELS__high__MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+  DIALECTIC_LEVELS__max__MODEL_CONFIG__MODEL: "auto"
+  DIALECTIC_LEVELS__max__MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+
+  # Суммаризация истории диалога.
+  SUMMARY_MODEL_CONFIG__MODEL: "auto"
+  SUMMARY_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+
+  # Dream consolidation (фоновая переработка памяти) — две модели.
+  DREAM_DEDUCTION_MODEL_CONFIG__MODEL: "auto"
+  DREAM_DEDUCTION_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+  DREAM_INDUCTION_MODEL_CONFIG__MODEL: "auto"
+  DREAM_INDUCTION_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+
+  # Эмбеддинги для pgvector. omniroute должен раздавать embedding-модель на /v1/embeddings.
+  # Если у omniroute нет embedding-провайдера — переключи EMBED_MESSAGES на "false"
+  # (тогда векторный поиск по сообщениям отключается), либо укажи прямой ключ OpenAI ниже.
+  EMBED_MESSAGES: "true"
+  EMBEDDING_MODEL_CONFIG__MODEL: "text-embedding-3-small"
+  EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+---
+# -----------------------------------------------------------------------------
+# Секреты: API-ключ omniroute (создаётся в дашборде omniroute -> Endpoints).
+# Honcho шлёт его как "Authorization: Bearer ..." на OpenAI-совместимый /v1.
+# ЗАМЕНИТЕ значение на реальный ключ из дашборда перед деплоем.
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: Secret
+metadata:
+  name: honcho-secrets
+  namespace: honcho
+type: Opaque
+stringData:
+  LLM_OPENAI_API_KEY: "omniroute-api-key-here"
+---
+# -----------------------------------------------------------------------------
+# PostgreSQL c pgvector (compose: database).
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: honcho
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      securityContext:
+        runAsUser: 0
+        fsGroup: 999
+      initContainers:
+        - name: fix-permissions
+          image: busybox:1.36
+          command: ["sh", "-c", "chown -R 999:999 /var/lib/postgresql/data && chmod 0700 /var/lib/postgresql/data"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      containers:
+        - name: postgres
+          image: pgvector/pgvector:pg15
+          imagePullPolicy: "IfNotPresent"
+          args: ["postgres", "-c", "max_connections=200"]
+          ports:
+            - containerPort: 5432
+              name: main
+          env:
+            - name: POSTGRES_DB
+              value: postgres
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "postgres"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: data
+          hostPath:
+            path: /DATA/app-data/honcho/pg-data
+            type: DirectoryOrCreate
+        - name: init
+          configMap:
+            name: honcho-db-init
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: honcho
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: main
+  selector:
+    app: postgres
+---
+# -----------------------------------------------------------------------------
+# Redis-кэш (compose: redis).
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: honcho
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:8.2
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 6379
+              name: main
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: data
+          hostPath:
+            path: /DATA/app-data/honcho/redis-data
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: honcho
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: main
+  selector:
+    app: redis
+---
+# -----------------------------------------------------------------------------
+# Honcho API (compose: api). entrypoint контейнера сам прогоняет миграции БД
+# (scripts/provision_db.py) и поднимает FastAPI на :8000.
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: honcho-api
+  namespace: honcho
+  labels:
+    app: honcho-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: honcho-api
+  template:
+    metadata:
+      labels:
+        app: honcho-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/plastic-labs/honcho:v3.0.12
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: honcho-config
+            - secretRef:
+                name: honcho-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: honcho-api
+  namespace: honcho
+  labels:
+    app: honcho-api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+  selector:
+    app: honcho-api
+---
+# -----------------------------------------------------------------------------
+# Deriver — фоновый воркер (compose: deriver). Переопределяем entrypoint,
+# как в compose: python -m src.deriver.
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: honcho-deriver
+  namespace: honcho
+  labels:
+    app: honcho-deriver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: honcho-deriver
+  template:
+    metadata:
+      labels:
+        app: honcho-deriver
+    spec:
+      containers:
+        - name: deriver
+          image: ghcr.io/plastic-labs/honcho:v3.0.12
+          imagePullPolicy: "IfNotPresent"
+          command: ["/app/.venv/bin/python", "-m", "src.deriver"]
+          envFrom:
+            - configMapRef:
+                name: honcho-config
+            - secretRef:
+                name: honcho-secrets
