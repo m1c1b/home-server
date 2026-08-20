@@ -38,7 +38,10 @@ data:
   CACHE_ENABLED: "true"
   VECTOR_STORE_TYPE: "pgvector"
   LOG_LEVEL: "INFO"
-  AUTH_USE_AUTH: "false"
+  # Авторизация включена: API требует JWT в "Authorization: Bearer ...".
+  # Секрет подписи — AUTH_JWT_SECRET (Secret honcho-secrets). Токены выпускаются
+  # скриптом scripts/generate_jwt.py внутри пода (см. api.yml).
+  AUTH_USE_AUTH: "true"
 
   # --- LLM через собственный omniroute (OpenAI-совместимый шлюз) ---
   # Транспорт по умолчанию "openai", ключ берётся из LLM_OPENAI_API_KEY (Secret).
