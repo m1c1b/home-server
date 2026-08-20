@@ -1,0 +1,84 @@
+---
+# Honcho (https://github.com/plastic-labs/honcho) — self-hosting в k3s.
+# Портирование официального docker-compose: database (pgvector) + redis + api +
+# deriver. Используется публикуемый образ ghcr.io/plastic-labs/honcho вместо
+# build-from-source (в compose образ собирается локально).
+#
+# Манифесты разбиты по ролям:
+#   config.yml   — ConfigMap'ы (init.sql + env-настройки)
+#   secrets.yml  — Secret с ключом LLM-провайдера
+#   postgres.yml — БД pgvector
+#   redis.yml    — кэш
+#   api.yml      — Honcho API
+#   deriver.yml  — фоновый воркер
+
+# -----------------------------------------------------------------------------
+# init.sql для postgres: pgvector-расширение (эквивалент ./database/init.sql).
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: honcho-db-init
+  namespace: honcho
+data:
+  init.sql: |
+    CREATE EXTENSION IF NOT EXISTS vector;
+---
+# -----------------------------------------------------------------------------
+# Общие несекретные переменные окружения для api и deriver.
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: honcho-config
+  namespace: honcho
+data:
+  DB_CONNECTION_URI: "postgresql+psycopg://postgres:postgres@postgres:5432/postgres"
+  CACHE_URL: "redis://redis:6379/0?suppress=true"
+  CACHE_ENABLED: "true"
+  VECTOR_STORE_TYPE: "pgvector"
+  LOG_LEVEL: "INFO"
+  AUTH_USE_AUTH: "false"
+
+  # --- LLM через собственный omniroute (OpenAI-совместимый шлюз) ---
+  # Транспорт по умолчанию "openai", ключ берётся из LLM_OPENAI_API_KEY (Secret).
+  # base_url переопределяется отдельно для КАЖДОЙ LLM-фичи Honcho, поэтому
+  # прописываем OVERRIDES__BASE_URL на всех: deriver / dialectic / summary / dream.
+  # Service omniroute слушает :80 -> контейнер :20128, путь /v1.
+  # Модель "auto" = smart-routing omniroute (можно заменить на provider/model, напр. openai/gpt-4o).
+
+  # Фоновый воркер (извлечение памяти) — основной потребитель LLM.
+  DERIVER_MODEL_CONFIG__MODEL: "auto"
+  DERIVER_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+
+  # Dialectic chat (ответы о пользователе) — по одному уровню reasoning.
+  DIALECTIC_LEVELS__minimal__MODEL_CONFIG__MODEL: "auto"
+  DIALECTIC_LEVELS__minimal__MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+  DIALECTIC_LEVELS__low__MODEL_CONFIG__MODEL: "auto"
+  DIALECTIC_LEVELS__low__MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+  DIALECTIC_LEVELS__medium__MODEL_CONFIG__MODEL: "auto"
+  DIALECTIC_LEVELS__medium__MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+  DIALECTIC_LEVELS__high__MODEL_CONFIG__MODEL: "auto"
+  DIALECTIC_LEVELS__high__MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+  DIALECTIC_LEVELS__max__MODEL_CONFIG__MODEL: "auto"
+  DIALECTIC_LEVELS__max__MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+
+  # Суммаризация истории диалога.
+  SUMMARY_MODEL_CONFIG__MODEL: "auto"
+  SUMMARY_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+
+  # Dream consolidation (фоновая переработка памяти) — две модели.
+  DREAM_DEDUCTION_MODEL_CONFIG__MODEL: "auto"
+  DREAM_DEDUCTION_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+  DREAM_INDUCTION_MODEL_CONFIG__MODEL: "auto"
+  DREAM_INDUCTION_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://omniroute.omniroute.svc.cluster.local/v1"
+
+  # Эмбеддинги для pgvector. omniroute отдаёт только chat-модели (нет embedding-провайдера),
+  # поэтому используем общий embedding-сервер TEI в отдельном namespace
+  # text-embeddings-inference (k3s/native/apps/text-embeddings-inference/tei.yml).
+  # bge-m3 -> размерность вектора 1024, её ОБЯЗАТЕЛЬНО согласовать с EMBEDDING_VECTOR_DIMENSIONS.
+  # TEI отдаёт OpenAI-совместимый /v1/embeddings без auth; лишний Bearer от Honcho он игнорирует.
+  EMBED_MESSAGES: "true"
+  EMBEDDING_VECTOR_DIMENSIONS: "1024"
+  EMBEDDING_MODEL_CONFIG__MODEL: "BAAI/bge-m3"
+  EMBEDDING_MODEL_CONFIG__OVERRIDES__BASE_URL: "http://tei.text-embeddings-inference.svc.cluster.local/v1"

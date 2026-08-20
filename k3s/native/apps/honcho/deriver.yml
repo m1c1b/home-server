@@ -1,0 +1,32 @@
+---
+# -----------------------------------------------------------------------------
+# Deriver — фоновый воркер (compose: deriver). Переопределяем entrypoint,
+# как в compose: python -m src.deriver.
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: honcho-deriver
+  namespace: honcho
+  labels:
+    app: honcho-deriver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: honcho-deriver
+  template:
+    metadata:
+      labels:
+        app: honcho-deriver
+    spec:
+      containers:
+        - name: deriver
+          image: ghcr.io/plastic-labs/honcho:v3.0.12
+          imagePullPolicy: "IfNotPresent"
+          command: ["/app/.venv/bin/python", "-m", "src.deriver"]
+          envFrom:
+            - configMapRef:
+                name: honcho-config
+            - secretRef:
+                name: honcho-secrets

@@ -1,0 +1,74 @@
+---
+# -----------------------------------------------------------------------------
+# Honcho API (compose: api). Образ по умолчанию запускает fastapi БЕЗ миграций,
+# поэтому воспроизводим полный bootstrap явно:
+#   1) provision_db.py       — alembic upgrade head (создаёт vector-колонки как 1536)
+#   2) configure_embeddings.py --yes — ALTER колонок под EMBEDDING_VECTOR_DIMENSIONS
+#      (у нас 1024 для bge-m3); идемпотентно, на пустой БД безопасно
+#   3) fastapi run           — старт API на :8000 (валидатор упадёт при несовпадении dim)
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: honcho-api
+  namespace: honcho
+  labels:
+    app: honcho-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: honcho-api
+  template:
+    metadata:
+      labels:
+        app: honcho-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/plastic-labs/honcho:v3.0.12
+          imagePullPolicy: "IfNotPresent"
+          workingDir: /app
+          command: ["sh", "-c"]
+          args:
+            - |
+              /app/.venv/bin/python scripts/provision_db.py && \
+              /app/.venv/bin/python scripts/configure_embeddings.py --yes && \
+              exec /app/.venv/bin/fastapi run --host 0.0.0.0 src/main.py
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: honcho-config
+            - secretRef:
+                name: honcho-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: honcho-api
+  namespace: honcho
+  labels:
+    app: honcho-api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+  selector:
+    app: honcho-api
