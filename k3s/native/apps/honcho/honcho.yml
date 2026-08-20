@@ -243,8 +243,12 @@ spec:
     app: redis
 ---
 # -----------------------------------------------------------------------------
-# Honcho API (compose: api). entrypoint контейнера сам прогоняет миграции БД
-# (scripts/provision_db.py) и поднимает FastAPI на :8000.
+# Honcho API (compose: api). Образ по умолчанию запускает fastapi БЕЗ миграций,
+# поэтому воспроизводим полный bootstrap явно:
+#   1) provision_db.py       — alembic upgrade head (создаёт vector-колонки как 1536)
+#   2) configure_embeddings.py --yes — ALTER колонок под EMBEDDING_VECTOR_DIMENSIONS
+#      (у нас 1024 для bge-m3); идемпотентно, на пустой БД безопасно
+#   3) fastapi run           — старт API на :8000 (валидатор упадёт при несовпадении dim)
 # -----------------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
@@ -267,6 +271,13 @@ spec:
         - name: api
           image: ghcr.io/plastic-labs/honcho:v3.0.12
           imagePullPolicy: "IfNotPresent"
+          workingDir: /app
+          command: ["sh", "-c"]
+          args:
+            - |
+              /app/.venv/bin/python scripts/provision_db.py && \
+              /app/.venv/bin/python scripts/configure_embeddings.py --yes && \
+              exec /app/.venv/bin/fastapi run --host 0.0.0.0 src/main.py
           ports:
             - containerPort: 8000
               name: http

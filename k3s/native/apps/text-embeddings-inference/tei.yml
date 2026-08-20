@@ -47,8 +47,10 @@ spec:
             - "float32"
             - "--port"
             - "3000"
+            # Прогрев ONNX-бэкенда на большом батче — пик по памяти. 4096 хватает
+            # для памяти чата и держит потребление в пределах лимита.
             - "--max-batch-tokens"
-            - "8192"
+            - "4096"
             - "--auto-truncate"
           ports:
             - containerPort: 3000
@@ -72,14 +74,16 @@ spec:
             httpGet:
               path: /health
               port: http
-            initialDelaySeconds: 120
+            # Холодный прогрев bge-m3 на CPU долгий — не убиваем под преждевременно.
+            initialDelaySeconds: 300
             periodSeconds: 20
+            failureThreshold: 6
           resources:
             requests:
               cpu: "500m"
               memory: "2Gi"
             limits:
-              memory: "4Gi"
+              memory: "8Gi"
       volumes:
         - name: model-cache
           hostPath:
